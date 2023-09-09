@@ -1,20 +1,25 @@
+package utils.radixtree;
+
 import java.util.*;
+/*
+public class RadixTree2<E> {
+    private Node<E> root;
 
-public class RTree {
-    private Node root;
-
-    public RTree() {
+    public RadixTree2(String rootKey, E value) {
     }
 
-    public void add(String key, Object value) {
+    public RadixTree2() {
+        root = new Node<E>("/",null);
+    }
 
-        Queue<Node> nodesStack = new ArrayDeque<>();
+    public void add(String key, E value) {
+        Queue<Node<E>> nodesStack = new ArrayDeque<>();
         if (root == null) {
-            root = new Node("/", null);
+            root = new Node<>("/", null);
         }
         nodesStack.add(root);
         int i = 0;
-        Node currentNode = null;
+        Node<E> currentNode = null;
         while (!nodesStack.isEmpty()) {
             currentNode = nodesStack.remove();
             var l = currentNode.key.length();
@@ -28,6 +33,9 @@ public class RTree {
             if (i > 0) {
                 var currentNodeSuffixKey = currentNode.key.substring(j, l);
                 var suffixKey = key.substring(i, r);
+                if (currentNode.isWLocked()) {
+                    return;
+                }
                 if (currentNodeSuffixKey.isEmpty() && suffixKey.isEmpty()) {
                     currentNode.value = value;
                     System.out.println("updated value!");
@@ -61,7 +69,7 @@ public class RTree {
 
                     currentNode.nodes.add(new Node(suffixKey, value));
                 }
-                System.out.printf("prefix: %s, currentNode suffix: %s, new Node: suffix: %s\n", currentNode.key.substring(0, j), currentNodeSuffixKey, suffixKey);
+                System.out.printf("prefix: %s, currentNode suffix: %s, new utils.radixtree.Node: suffix: %s\n", currentNode.key.substring(0, j), currentNodeSuffixKey, suffixKey);
                 return;
             }
 
@@ -100,12 +108,12 @@ public class RTree {
     }
 
     public boolean delete(String key) {
-        Queue<Node> nodesStack = new ArrayDeque<>();
-        Stack<Node> parentsStack = new Stack<>();
         if (root == null) {
             return false;
         }
-        nodesStack.add(root);
+        Queue<Node<E>> nodesStack = new ArrayDeque<>(root.nodes);
+        Stack<Node<E>> parentsStack = new Stack<>();
+        parentsStack.add(root);
         int i = 0;
         while (!nodesStack.isEmpty() && i < key.length()) {
             var currentNode = nodesStack.remove();
@@ -118,15 +126,13 @@ public class RTree {
                 if (i == key.length()) {
                     currentNode.value = null;
                     var parent = parentsStack.pop();
-                    var removed = parent.nodes.remove(currentNode);
-                    System.out.println("deleting node: parent key: " + parent.key + "node is deleted: " + removed);
+                    System.out.println("deleting node: " + key +" | parent key: " + parent.key);
 
                     if (parent.nodes.size() == 1 && parent.value == null) {
                         var onlyChild = parent.nodes.remove();
                         System.out.printf("merging parent and child: parent key: %s, child key: %s\n", parent.key, onlyChild.key);
                         parent.key += onlyChild.key;
                         parent.value = onlyChild.value;
-
                     }
 
                     return true;
@@ -143,9 +149,9 @@ public class RTree {
         printTree(root, "");
     }
 
-    public void printTree(Node node, String prefix) {
+    public void printTree(Node<E> node, String prefix) {
 
-        for (Node n : node.nodes) {
+        for (Node<E> n : node.nodes) {
             printTree(n, prefix + node.key);
         }
         if (node.value == null && !node.nodes.isEmpty()) {
@@ -154,4 +160,5 @@ public class RTree {
         System.out.println(prefix + node.key + " | value: " + node.value);
         System.out.println("*************************");
     }
-}
+
+} */
