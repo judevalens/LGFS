@@ -1,15 +1,29 @@
 package utils.radixtree
 
-class StringKey(key: String, size: Int) : Key<String>(size) {
-    override fun getByteArray(): Array<Byte> {
-        TODO("Not yet implemented")
+import java.nio.charset.Charset
+
+class StringKey(override var key: String, override var size: Int, override var arr: ByteArray) : Key<String>() {
+    constructor(key: String, size: Int) : this(key, size, key.toByteArray()) {
     }
 
     override fun sliceKey(range: IntRange): Key<String> {
-        TODO("Not yet implemented")
+        return StringKey(arr.sliceArray(range).toString(Charset.defaultCharset()), Byte.SIZE_BITS);
+    }
+
+    override fun concat(b: Key<String>): Key<String> {
+        return StringKey(key + b.key, Byte.SIZE_BITS)
     }
 
     override fun length(): Int {
-        TODO("Not yet implemented")
+        return arr.size
     }
+
+    override fun getEmptyKey(): Key<String> {
+        return StringKey("",Byte.SIZE_BITS)
+    }
+
+    override fun toString(): String {
+        return key;
+    }
+
 }
