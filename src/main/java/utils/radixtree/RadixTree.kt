@@ -1,74 +1,91 @@
 package utils.radixtree
 
 import java.util.*
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.TimeUnit
+import java.util.concurrent.locks.Lock
+import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock
 
-class RadixTree<K, V> constructor(private var key: Key<K>, private var value: V, private val radix: Int) {
+class RadixTree<K, V>(private var key: Key<K>, private var value: V, private val radix: Int) {
     private var root: Node<K, V> = Node(key, value)
-
     fun add(key: Key<K>, value: V): Boolean {
         println("adding: ${key.toString()}")
         val nodesStack: Queue<Node<K, V>> = ArrayDeque(Collections.singleton(root))
+        val lockStack = Stack<Node<K, V>>();
         var i = 0
-        while (!nodesStack.isEmpty()) {
-            val currentNode = nodesStack.remove()
-            val l: Int = currentNode.key.length()
-            val r = key.length()
-            val j: Int = keyCompare(currentNode.key.getByteArray(), key.getByteArray().sliceArray(i..<r))
-            i += j
-            if (i > 0) {
-                val currentNodeSuffixRange = j..<l
-                val suffixKeyRange = i..<r
-                val currentNodePrefixRange = 0..<j
-                if (currentNode.isWLocked()) {
-                    return false
-                }
+        try {
+            while (!nodesStack.isEmpty()) {
+                val currentNode = nodesStack.remove()
+                currentNode.lock.writeLock()
+                currentNode.lock.lockDelete()
+                println("got lock")
+                lockStack.add(currentNode)
+                try {
+                    val l: Int = currentNode.key.length()
+                    val r = key.length()
+                    val j: Int = keyCompare(currentNode.key.getByteArray(), key.getByteArray().sliceArray(i..<r))
+                    i += j
 
-                println(
-                        "prefix: ${currentNode.key.sliceKey(currentNodePrefixRange)}, currentNode suffix: ${
-                            currentNode.key.sliceKey(
+                    if (i > 0) {
+                        val currentNodeSuffixRange = j..<l
+                        val suffixKeyRange = i..<r
+                        val currentNodePrefixRange = 0..<j
+
+                        println(
+                            "prefix: ${currentNode.key.sliceKey(currentNodePrefixRange)}, currentNode suffix: ${
+                                currentNode.key.sliceKey(
                                     currentNodeSuffixRange
-                            )
-                        }, suffix: ${key.sliceKey(suffixKeyRange)}"
-                )
-
-                if (currentNodeSuffixRange.isEmpty() && suffixKeyRange.isEmpty()) {
-                    currentNode.value = value
-                } else if (!currentNodeSuffixRange.isEmpty() && !suffixKeyRange.isEmpty()) {
-                    val extendedNode: Node<K, V> = Node(currentNode.key.sliceKey(currentNodeSuffixRange), currentNode.value)
-                    extendedNode.nodes = currentNode.nodes
-                    currentNode.key = currentNode.key.sliceKey(currentNodePrefixRange)
-                    currentNode.value = null
-                    currentNode.nodes = LinkedList<Node<K, V>>()
-                    currentNode.nodes.add(extendedNode)
-                    currentNode.nodes.add(Node(key.sliceKey(suffixKeyRange), value))
-                } else if (!currentNodeSuffixRange.isEmpty()) {
-                    val extendedNode: Node<K, V> =
-                            Node(currentNode.key.sliceKey(currentNodeSuffixRange), currentNode.value)
-                    currentNode.key = currentNode.key.sliceKey(currentNodePrefixRange)
-                    currentNode.value = value
-                    extendedNode.nodes = currentNode.nodes
-                    currentNode.nodes = LinkedList<Node<K, V>>()
-                    currentNode.nodes.add(extendedNode)
-                } else if (!suffixKeyRange.isEmpty()) {
-                    var foundEdge = false
-                    val suffixKey = key.sliceKey(suffixKeyRange)
-                    for (node in currentNode.nodes) {
-                        if (node.key.isPrefix(suffixKey)) {
-                            nodesStack.clear()
-                            nodesStack.add(node)
-                            foundEdge = true
-                            break
+                                )
+                            }, suffix: ${key.sliceKey(suffixKeyRange)}"
+                        )
+                        if (currentNodeSuffixRange.isEmpty() && suffixKeyRange.isEmpty()) {
+                            currentNode.value = value
+                        } else if (!currentNodeSuffixRange.isEmpty() && !suffixKeyRange.isEmpty()) {
+                            val extendedNode: Node<K, V> =
+                                Node(currentNode.key.sliceKey(currentNodeSuffixRange), currentNode.value)
+                            extendedNode.nodes = currentNode.nodes
+                            currentNode.key = currentNode.key.sliceKey(currentNodePrefixRange)
+                            currentNode.value = null
+                            currentNode.nodes = LinkedList<Node<K, V>>()
+                            currentNode.nodes.add(extendedNode)
+                            currentNode.nodes.add(Node(key.sliceKey(suffixKeyRange), value))
+                        } else if (!currentNodeSuffixRange.isEmpty()) {
+                            val extendedNode: Node<K, V> =
+                                Node(currentNode.key.sliceKey(currentNodeSuffixRange), currentNode.value)
+                            currentNode.key = currentNode.key.sliceKey(currentNodePrefixRange)
+                            currentNode.value = value
+                            extendedNode.nodes = currentNode.nodes
+                            currentNode.nodes = LinkedList<Node<K, V>>()
+                            currentNode.nodes.add(extendedNode)
+                        } else if (!suffixKeyRange.isEmpty()) {
+                            var foundEdge = false
+                            val suffixKey = key.sliceKey(suffixKeyRange)
+                            for (node in currentNode.nodes) {
+                                if (node.key.isPrefix(suffixKey)) {
+                                    nodesStack.clear()
+                                    nodesStack.add(node)
+                                    foundEdge = true
+                                    break
+                                }
+                            }
+                            if (foundEdge) continue
+                            currentNode.nodes.add(Node(suffixKey, value))
                         }
+                        return true
                     }
-                    if (foundEdge) continue
-                    currentNode.nodes.add(Node(suffixKey, value))
+                    nodesStack.addAll(currentNode.nodes)
+                } finally {
+                    currentNode.lock.unlockWrite()
                 }
-
-                return true
             }
-            nodesStack.addAll(currentNode.nodes)
+            root.nodes.add(Node(key, value))
+        } finally {
+            for (lock in lockStack) {
+                println("releasing locks")
+                lock.lock.unlockDelete()
+            }
         }
-        root.nodes.add(Node(key, value))
+
         return false
     }
 
@@ -111,7 +128,11 @@ class RadixTree<K, V> constructor(private var key: Key<K>, private var value: V,
                     println("deleting node: " + key + " | parent key: " + parent.key)
                     if (parent.nodes.size == 1 && parent.value == null) {
                         val onlyChild = parent.nodes.remove()
-                        System.out.printf("merging parent and child: parent key: %s, child key: %s\n", parent.key, onlyChild.key)
+                        System.out.printf(
+                            "merging parent and child: parent key: %s, child key: %s\n",
+                            parent.key,
+                            onlyChild.key
+                        )
                         parent.key = parent.key.concat(onlyChild.key)
                         parent.value = onlyChild.value
                     }
@@ -140,7 +161,6 @@ class RadixTree<K, V> constructor(private var key: Key<K>, private var value: V,
         println(prefix.toString() + node.key.toString() + " | value: " + node.value)
         println("*************************")
     }
-
 
     private fun keyCompare(a: ByteArray, b: ByteArray): Int {
         var byteIndex = 0

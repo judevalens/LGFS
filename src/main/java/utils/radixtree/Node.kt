@@ -1,16 +1,12 @@
-package utils.radixtree;
+package utils.radixtree
 
-import java.util.LinkedList;
+import utils.radixtree.concurrent.Lock
+import java.util.LinkedList
 
-class Node<K,V> constructor(var key: Key<K>, var value: V?) {
 
-    var nodes: LinkedList<Node<K,V>> = LinkedList()
-
-    fun isRLocked(): Boolean {
-        return false;
-    }
-
-    fun isWLocked(): Boolean {
-        return false;
-    }
+class Node<K, V>(var key: Key<K>, var value: V?) {
+    var nodes: LinkedList<Node<K, V>> = LinkedList()
+    var isInternal = false
+    var  lock = Lock()
+        private set
 }
