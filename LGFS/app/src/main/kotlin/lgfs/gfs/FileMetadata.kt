@@ -1,9 +1,8 @@
-package gfs
-
-import kotlin.math.ceil
+package lgfs.gfs
 
 class FileMetadata(val path: String, val isDir: Boolean, val size: Long)  {
 
+    val chunkMap = HashMap<Int,Long>()
 
     constructor() : this("", true, -1) {
     }
