@@ -1,0 +1,327 @@
+adding: romane
+	got lock
+releasing locks
+adding: romanus
+	got lock
+	got lock
+1prefix: roman, currentNode suffix: e, suffix: us
+releasing locks
+releasing locks
+adding: romulus
+	got lock
+	got lock
+2prefix: rom, currentNode suffix: an, suffix: ulus
+releasing locks
+releasing locks
+adding: rubens
+	got lock
+	got lock
+1prefix: r, currentNode suffix: om, suffix: ubens
+releasing locks
+releasing locks
+adding: rubber
+	got lock
+	got lock
+/prefix: r, currentNode suffix: , suffix: ubber
+	got lock
+1prefix: ub, currentNode suffix: ens, suffix: ber
+releasing locks
+releasing locks
+releasing locks
+adding: rubicon
+	got lock
+	got lock
+0prefix: r, currentNode suffix: , suffix: ubicon
+	got lock
+/prefix: ub, currentNode suffix: , suffix: icon
+releasing locks
+releasing locks
+releasing locks
+adding: rubicundus
+	got lock
+	got lock
+3prefix: r, currentNode suffix: , suffix: ubicundus
+	got lock
+2prefix: ub, currentNode suffix: , suffix: icundus
+	got lock
+2prefix: ic, currentNode suffix: on, suffix: undus
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: romane
+	got lock
+releasing locks
+adding: romanus
+	got lock
+	got lock
+1prefix: roman, currentNode suffix: e, suffix: us
+releasing locks
+releasing locks
+adding: romulus
+	got lock
+	got lock
+2prefix: rom, currentNode suffix: an, suffix: ulus
+releasing locks
+releasing locks
+adding: rubens
+	got lock
+	got lock
+1prefix: r, currentNode suffix: om, suffix: ubens
+releasing locks
+releasing locks
+adding: rubber
+	got lock
+	got lock
+/prefix: r, currentNode suffix: , suffix: ubber
+	got lock
+1prefix: ub, currentNode suffix: ens, suffix: ber
+releasing locks
+releasing locks
+releasing locks
+adding: rubicon
+	got lock
+	got lock
+0prefix: r, currentNode suffix: , suffix: ubicon
+	got lock
+/prefix: ub, currentNode suffix: , suffix: icon
+releasing locks
+releasing locks
+releasing locks
+adding: rubicundus
+	got lock
+	got lock
+3prefix: r, currentNode suffix: , suffix: ubicundus
+	got lock
+2prefix: ub, currentNode suffix: , suffix: icundus
+	got lock
+2prefix: ic, currentNode suffix: on, suffix: undus
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+'deleting node: romane | parent key: an
+adding: romane
+	got lock
+	got lock
+/prefix: r, currentNode suffix: , suffix: omane
+	got lock
+.prefix: om, currentNode suffix: , suffix: ane
+	got lock
+,prefix: an, currentNode suffix: , suffix: e
+	got lock
+*prefix: e, currentNode suffix: , suffix: 
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: romane
+	got lock
+	got lock
+/prefix: r, currentNode suffix: , suffix: omane
+	got lock
+.prefix: om, currentNode suffix: , suffix: ane
+	got lock
+,prefix: an, currentNode suffix: , suffix: e
+	got lock
+*prefix: e, currentNode suffix: , suffix: 
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: romanus
+	got lock
+	got lock
+0prefix: r, currentNode suffix: , suffix: omanus
+	got lock
+/prefix: om, currentNode suffix: , suffix: anus
+	got lock
+-prefix: an, currentNode suffix: , suffix: us
+	got lock
++prefix: us, currentNode suffix: , suffix: 
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: romulus
+	got lock
+	got lock
+0prefix: r, currentNode suffix: , suffix: omulus
+	got lock
+/prefix: om, currentNode suffix: , suffix: ulus
+	got lock
+-prefix: ulus, currentNode suffix: , suffix: 
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: rubens
+	got lock
+	got lock
+/prefix: r, currentNode suffix: , suffix: ubens
+	got lock
+.prefix: ub, currentNode suffix: , suffix: ens
+	got lock
+,prefix: ens, currentNode suffix: , suffix: 
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: rubber
+	got lock
+	got lock
+/prefix: r, currentNode suffix: , suffix: ubber
+	got lock
+.prefix: ub, currentNode suffix: , suffix: ber
+	got lock
+,prefix: ber, currentNode suffix: , suffix: 
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: rubicon
+	got lock
+	got lock
+0prefix: r, currentNode suffix: , suffix: ubicon
+	got lock
+/prefix: ub, currentNode suffix: , suffix: icon
+	got lock
+-prefix: ic, currentNode suffix: , suffix: on
+	got lock
++prefix: on, currentNode suffix: , suffix: 
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: rubicundus
+	got lock
+	got lock
+3prefix: r, currentNode suffix: , suffix: ubicundus
+	got lock
+2prefix: ub, currentNode suffix: , suffix: icundus
+	got lock
+0prefix: ic, currentNode suffix: , suffix: undus
+	got lock
+.prefix: undus, currentNode suffix: , suffix: 
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: abc
+	got lock
+releasing locks
+adding: def
+	got lock
+	got lock
+releasing locks
+releasing locks
+adding: abc/def
+	got lock
+	got lock
+0prefix: abc, currentNode suffix: , suffix: /def
+releasing locks
+releasing locks
+adding: def/abc
+	got lock
+	got lock
+	got lock
+0prefix: def, currentNode suffix: , suffix: /abc
+releasing locks
+releasing locks
+releasing locks
+adding: xyz/abc
+	got lock
+	got lock
+	got lock
+	got lock
+	got lock
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: xyz
+	got lock
+	got lock
+	got lock
+	got lock
+0prefix: xyz, currentNode suffix: /abc, suffix: 
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: xyz/abc/def
+	got lock
+	got lock
+	got lock
+	got lock
+4prefix: xyz, currentNode suffix: , suffix: /abc/def
+	got lock
+1prefix: /abc, currentNode suffix: , suffix: /def
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+#deleting node: xyz | parent key: /
+adding: abc
+	got lock
+releasing locks
+adding: def
+	got lock
+	got lock
+releasing locks
+releasing locks
+adding: abc/def
+	got lock
+	got lock
+0prefix: abc, currentNode suffix: , suffix: /def
+releasing locks
+releasing locks
+adding: def/abc
+	got lock
+	got lock
+	got lock
+0prefix: def, currentNode suffix: , suffix: /abc
+releasing locks
+releasing locks
+releasing locks
+adding: xyz/abc
+	got lock
+	got lock
+	got lock
+	got lock
+	got lock
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: xyz
+	got lock
+	got lock
+	got lock
+	got lock
+0prefix: xyz, currentNode suffix: /abc, suffix: 
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+adding: xyz/abc/def
+	got lock
+	got lock
+	got lock
+	got lock
+4prefix: xyz, currentNode suffix: , suffix: /abc/def
+	got lock
+1prefix: /abc, currentNode suffix: , suffix: /def
+releasing locks
+releasing locks
+releasing locks
+releasing locks
+releasing locks
