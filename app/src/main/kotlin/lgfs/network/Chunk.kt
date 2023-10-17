@@ -42,6 +42,7 @@ class Chunk(context: ActorContext<ClusterProtocol>) : AbstractBehavior<ClusterPr
     }
 
     private fun handleMasterUp(msg: ClusterProtocol.MasterUP): Behavior<ClusterProtocol> {
+        logger.info("Master is up at path {}",msg.masterRef.path())
         masterRef = msg.masterRef
         masterRef.tell(ClusterProtocol.ChunkUp(context.self, Secrets.getSecrets().getHostName()))
         isInitialized = true
@@ -50,6 +51,7 @@ class Chunk(context: ActorContext<ClusterProtocol>) : AbstractBehavior<ClusterPr
 
     private fun onRequestChunkInventory(msg: ClusterProtocol.RequestChunkInventory): Behavior<ClusterProtocol> {
         if (!isInitialized) return Behaviors.same()
+        logger.info("Sending chunk inventory to master")
         val chunksIterator = chunks.values.iterator()
         while (chunksIterator.hasNext()) {
             val inventory = ClusterProtocol.ChunkInventory(Secrets.getSecrets().getHostName(), ArrayList())

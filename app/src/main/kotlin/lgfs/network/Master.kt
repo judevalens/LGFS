@@ -4,7 +4,6 @@ import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.*
 import akka.actor.typed.pubsub.Topic
-import akka.actor.typed.receptionist.ServiceKey
 import lgfs.gfs.FileSystem
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -27,11 +26,7 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
     }
 
     private val chunkServers = HashMap<String, ActorRef<ClusterProtocol>>()
-    val fs = FileSystem()
-    val pingServiceKey: ServiceKey<ClusterProtocol.Handshake> = ServiceKey.create(
-        ClusterProtocol.Handshake::class.java, "pingService"
-    )
-
+    private val fs = FileSystem()
     private val protocolTopic: ActorRef<Topic.Command<ClusterProtocol>> =
         context.spawn(Topic.create(ClusterProtocol::class.java, "cluster-protocol"), "cluster-pub-sub")
 
@@ -40,7 +35,7 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
             MASTER_UP_TIMER_KEY,
             ClusterProtocol.MasterUP(context.self),
             Duration.ZERO,
-            Duration.ofSeconds(10)
+            Duration.ofSeconds(15)
         )
     }
 
@@ -49,6 +44,7 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
         return newReceiveBuilder()
             .onMessage(ClusterProtocol.MasterUP::class.java, this::onMasterUP)
             .onMessage(ClusterProtocol.ChunkUp::class.java, this::onChunkUp)
+            .onMessage(ClusterProtocol.ChunkInventory::class.java, this::onChunkInventory)
             .build()
     }
 
@@ -58,15 +54,18 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
     }
 
     private fun onChunkUp(msg: ClusterProtocol.ChunkUp): Behavior<ClusterProtocol> {
+        logger.info("Chunk server: {}, is up at path: {}",msg.serverHostName,msg.chunkRef.path())
         chunkServers[msg.serverHostName] = msg.chunkRef
         msg.chunkRef.tell(ClusterProtocol.RequestChunkInventory())
         return Behaviors.same()
     }
 
-    private fun onChunkInventory(msg: ClusterProtocol.ChunkInventory) {
+    private fun onChunkInventory(msg: ClusterProtocol.ChunkInventory): Behavior<ClusterProtocol> {
+        logger.info("received chunk inventory from {}: {} chunk received", msg.serverHostName, msg.chunkIds.size)
         msg.chunkIds.forEach { chunkId ->
             fs.attachServerToChunk(msg.serverHostName, chunkId)
         }
+        return Behaviors.same()
     }
 
 }
