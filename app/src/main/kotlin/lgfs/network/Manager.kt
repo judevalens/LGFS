@@ -24,7 +24,6 @@ class Manager(context: ActorContext<Command>) : AbstractBehavior<Manager.Command
     }
 
     class LaunchChunk(val name: String) : Command {
-
     }
 
     class Handshake(listing: Receptionist.Listing) {
@@ -38,7 +37,7 @@ class Manager(context: ActorContext<Command>) : AbstractBehavior<Manager.Command
             }
         }
 
-        fun launch() {
+        fun launch(): ActorSystem<Command> {
             val system = ActorSystem.create(create(), "lgfsCluster", conf())
             val cluster: Cluster = Cluster.get(system)
             val member: Member = cluster.selfMember()
@@ -79,7 +78,7 @@ class Manager(context: ActorContext<Command>) : AbstractBehavior<Manager.Command
                 Behaviors.same()
             }
             .onMessage(LaunchChunk::class.java) { msg ->
-                context.spawn(Chunk.create(), msg.name)
+                context.spawn(ChunkServer.create(), msg.name)
                 Behaviors.same()
             }
 

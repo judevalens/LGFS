@@ -8,5 +8,4 @@ import lgfs.network.Manager
 
 fun main() {
     Manager.launch()
-    //println(App().greeting)
 }

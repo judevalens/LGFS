@@ -12,7 +12,7 @@ import lgfs.gfs.ChunkMetadata
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
-class Chunk(context: ActorContext<ClusterProtocol>) : AbstractBehavior<ClusterProtocol>(context) {
+class ChunkServer(context: ActorContext<ClusterProtocol>) : AbstractBehavior<ClusterProtocol>(context) {
     private val protocolTopic: ActorRef<Topic.Command<ClusterProtocol>> =
         context.spawn(Topic.create(ClusterProtocol::class.java, "cluster-protocol"), "cluster-pub-sub")
     private var isInitialized = false
@@ -29,7 +29,7 @@ class Chunk(context: ActorContext<ClusterProtocol>) : AbstractBehavior<ClusterPr
         fun create(): Behavior<ClusterProtocol> {
             return Behaviors.setup {
                 logger.info("created lgs chunk actor")
-                Chunk(it)
+                ChunkServer(it)
             }
         }
     }

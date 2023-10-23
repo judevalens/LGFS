@@ -4,7 +4,10 @@ import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.*
 import akka.actor.typed.pubsub.Topic
+import lgfs.gfs.ChunkServerStat
+import lgfs.gfs.FileMetadata
 import lgfs.gfs.FileSystem
+import lgfs.gfs.StatManager
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
@@ -25,20 +28,35 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
         }
     }
 
-    private val chunkServers = HashMap<String, ActorRef<ClusterProtocol>>()
+    class CreateFileReq(
+        val reqId: String,
+        val fileMetadata: FileMetadata,
+        val replyTo: ActorRef<CreateFileRes>
+    ) : ClusterProtocol
+
+    class CreateFileRes(val reqId: String, val successful: Boolean, val replicas: List<Pair<String, Set<String>>>) :
+        ClusterProtocol
+
+    private var fsRequestId = 0L
+    private val chunkServers = HashMap<String, ChunkServerStat>()
     private val fs = FileSystem()
+    private val statManager: ActorRef<StatManager.Command>
     private val protocolTopic: ActorRef<Topic.Command<ClusterProtocol>> =
         context.spawn(Topic.create(ClusterProtocol::class.java, "cluster-protocol"), "cluster-pub-sub")
 
+    private val fileCreators = HashMap<String, ActorRef<FileCreator.Command>>()
+    private val reqIds = HashMap<Long, Long>()
+
     init {
+        statManager = context.spawn(StatManager.create(), "ChunkServerStatAggregator")
+        // sends heartbeat to cluster ?
         timers.startTimerWithFixedDelay(
             MASTER_UP_TIMER_KEY,
             ClusterProtocol.MasterUP(context.self),
             Duration.ZERO,
-            Duration.ofSeconds(15)
+            Duration.ofSeconds(2)
         )
     }
-
 
     override fun createReceive(): Receive<ClusterProtocol> {
         return newReceiveBuilder()
@@ -48,14 +66,22 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
             .build()
     }
 
+    private fun createFile(fileMetadata: FileMetadata) {
+    }
+
+    private fun onCreateFile(msg: CreateFileReq) {
+        fileCreators[msg.reqId] =
+            context.spawn(FileCreator.create(msg.reqId, msg.fileMetadata, fs, statManager, msg.replyTo), "fs")
+    }
+
     private fun onMasterUP(msg: ClusterProtocol.MasterUP): Behavior<ClusterProtocol> {
         protocolTopic.tell(Topic.publish(msg))
         return Behaviors.same()
     }
 
     private fun onChunkUp(msg: ClusterProtocol.ChunkUp): Behavior<ClusterProtocol> {
-        logger.info("Chunk server: {}, is up at path: {}",msg.serverHostName,msg.chunkRef.path())
-        chunkServers[msg.serverHostName] = msg.chunkRef
+        logger.info("Chunk server: {}, is up at path: {}", msg.serverHostName, msg.chunkRef.path())
+        chunkServers[msg.serverHostName] = ChunkServerStat(msg.serverHostName)
         msg.chunkRef.tell(ClusterProtocol.RequestChunkInventory())
         return Behaviors.same()
     }
@@ -68,4 +94,7 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
         return Behaviors.same()
     }
 
+    private fun getReqId(): Long {
+        return 0L
+    }
 }

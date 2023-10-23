@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.ir.backend.js.transformers.irToJs.argumentsWithVarar
 object Versions {
     const val SCALA_BINARY = "2.13"
 }
+
 plugins {
     // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
     id("org.jetbrains.kotlin.jvm") version "1.9.10"
