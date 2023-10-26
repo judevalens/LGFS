@@ -15,6 +15,9 @@ services:
       - type: bind
         source: "./app/src/main/resources/application.conf"
         target: "/app/conf/application.conf"
+      - type: bind
+        source: "./app/src/main/resources/test.txt"
+        target: "/app/conf/test.txt"
     profiles: ["master","all"]
 
   chunk-1:
