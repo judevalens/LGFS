@@ -5,7 +5,6 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.StashBuffer
-import lgfs.api.MasterAPI
 import lgfs.gfs.FileMetadata
 import lgfs.gfs.FileSystem
 import lgfs.gfs.StatManager
@@ -18,7 +17,7 @@ class FileCreator(
     private val stashBuffer: StashBuffer<Command>,
     private val fs: FileSystem,
     private val statManager: ActorRef<StatManager.Command>,
-    private val replyTo: ActorRef<Master.CreateFileRes>
+    private val replyTo: ActorRef<FileProtocol>
 ) {
     interface Command
     private class CreateFile(
@@ -35,7 +34,7 @@ class FileCreator(
             fileMetadata: FileMetadata,
             fs: FileSystem,
             statManager: ActorRef<StatManager.Command>,
-            replyTo: ActorRef<Master.CreateFileRes>
+            replyTo: ActorRef<FileProtocol>
         ): Behavior<Command> {
             return Behaviors.withStash(1) { stash ->
                 Behaviors.setup {
@@ -83,7 +82,7 @@ class FileCreator(
                         ClusterProtocol.NoOp::class.java,
                         replyTo, Duration.ofMinutes(100),
                         {
-                            Master.CreateFileRes(reqId, true, msg2.replicas)
+                            FileProtocol.CreateFileRes(reqId, true, msg2.replicas)
                         },
                         { _, _ ->
                             Exit()

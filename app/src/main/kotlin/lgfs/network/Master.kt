@@ -28,15 +28,6 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
         }
     }
 
-    class CreateFileReq(
-        val reqId: String,
-        val fileMetadata: FileMetadata,
-        val replyTo: ActorRef<CreateFileRes>
-    ) : ClusterProtocol
-
-    class CreateFileRes(val reqId: String, val successful: Boolean, val replicas: List<Pair<String, Set<String>>>) :
-        ClusterProtocol
-
     private var fsRequestId = 0L
     private val chunkServers = HashMap<String, ChunkServerStat>()
     private val fs = FileSystem()
@@ -44,7 +35,6 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
     private val protocolTopic: ActorRef<Topic.Command<ClusterProtocol>> =
         context.spawn(Topic.create(ClusterProtocol::class.java, "cluster-protocol"), "cluster-pub-sub")
 
-    private val fileCreators = HashMap<String, ActorRef<FileCreator.Command>>()
     private val reqIds = HashMap<Long, Long>()
 
     init {
@@ -67,11 +57,6 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
     }
 
     private fun createFile(fileMetadata: FileMetadata) {
-    }
-
-    private fun onCreateFile(msg: CreateFileReq) {
-        fileCreators[msg.reqId] =
-            context.spawn(FileCreator.create(msg.reqId, msg.fileMetadata, fs, statManager, msg.replyTo), "fs")
     }
 
     private fun onMasterUP(msg: ClusterProtocol.MasterUP): Behavior<ClusterProtocol> {

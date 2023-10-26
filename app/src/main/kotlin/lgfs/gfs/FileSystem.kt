@@ -9,7 +9,9 @@ class FileSystem {
         val lastChunkId = AtomicLong()
         const val CHUNK_SIZE = 64 * 1000000
     }
-    private val radixTree = RadixTree(Key.getStringKey("/"), FileMetadata(), Byte.SIZE_BITS);
+
+    private val radixTree = RadixTree(Key.getStringKey("/"), FileMetadata("/", true, 0), Byte.SIZE_BITS);
+
     /// contains mapping from chunk handle to file path
     private val chunksLookupTable = HashMap<Long, String>()
 
@@ -17,15 +19,17 @@ class FileSystem {
         val added = radixTree.add(Key.getStringKey(metadata.path), metadata)
         return added
     }
+
     fun printFs() {
         radixTree.printTree()
     }
+
     fun attachServerToChunk(serverHostName: String, chunkHandle: Long): Boolean {
         val filePath = chunksLookupTable[chunkHandle]
         filePath?.let {
             val file = radixTree.find(Key.getStringKey(filePath))
             file?.let {
-                return it.attachServerToChunk(chunkHandle, serverHostName)
+            TODO()//return it.attachServerToChunk(chunkHandle, serverHostName)
             }
         }
         return false

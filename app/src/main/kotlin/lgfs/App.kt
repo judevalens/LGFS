@@ -7,5 +7,5 @@ import lgfs.network.Manager
 
 
 fun main() {
-    Manager.launch()
+    val manager = Manager.launch()
 }
