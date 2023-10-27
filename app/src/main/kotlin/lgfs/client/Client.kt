@@ -35,7 +35,7 @@ class Client(private val gfsApi: GfsApi) {
 
             }
         }else {
-            logger.info("File at: ${filePathStr} doesn't exist")
+            logger.info("File at: $filePathStr doesn't exist")
         }
 
     }

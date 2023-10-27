@@ -21,6 +21,8 @@ import kotlin.system.exitProcess
 class Manager(context: ActorContext<Command>) : AbstractBehavior<Manager.Command>(context) {
     interface Command {}
 
+    private val test_path = "/app/conf/test.txt"
+
     class LaunchMaster(val name: String) : Command {
         fun test() {
 
@@ -106,7 +108,7 @@ class Manager(context: ActorContext<Command>) : AbstractBehavior<Manager.Command
     private fun launchClientAPI() {
         val masterApi: GfsApi = GfsApi(masterExecutor, system)
         val client = Client(masterApi)
-        client.createFile("")
+        client.createFile(test_path)
     }
 
     fun isMasterActorUp(): Boolean {

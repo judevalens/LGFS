@@ -8,6 +8,8 @@ import akka.actor.typed.javadsl.StashBuffer
 import lgfs.gfs.FileMetadata
 import lgfs.gfs.FileSystem
 import lgfs.gfs.StatManager
+import org.slf4j.Logger
+import org.slf4j.LoggerFactory
 import java.time.Duration
 
 class FileCreator(
@@ -27,6 +29,8 @@ class FileCreator(
     private class ReplicaLocationsReq : Command
     private class ReplicaLocationsRes(val replicas: List<Pair<String, Set<String>>>) : Command
     private class Exit : Command
+
+    private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
     companion object {
         fun create(
@@ -61,6 +65,7 @@ class FileCreator(
     }
 
     private fun start(): Behavior<Command> {
+        logger.info("Requesting replicas location for new file! file path: {}, req id: $reqId", fileMetadata.path)
         stashBuffer.stash(ReplicaLocationsReq())
         return stashBuffer.unstashAll(reqReplicas())
     }
@@ -76,6 +81,7 @@ class FileCreator(
     private fun onCreateFile(): Behavior<Command> {
         return Behaviors.receive(Command::class.java)
             .onMessage(CreateFile::class.java) { msg2 ->
+                logger.debug("adding file: ${fileMetadata.path} to directory tree, req id: $reqId")
                 val fileCreated = fs.addFile(fileMetadata)
                 if (fileCreated) {
                     context.ask(
@@ -85,11 +91,13 @@ class FileCreator(
                             FileProtocol.CreateFileRes(reqId, true, msg2.replicas)
                         },
                         { _, _ ->
+                            logger.debug("Done process file creation request: $reqId, exiting...")
                             Exit()
                         }
                     )
                 } else {
-                    TODO()
+                    logger.info("Failed to add file path: ${fileMetadata.path} to directory tree, req id: $reqId")
+                    FileProtocol.CreateFileRes(reqId, false, emptyList())
                 }
                 Behaviors.same()
             }

@@ -9,6 +9,9 @@ interface FileProtocol {
         val fileMetadata: FileMetadata,
         val replyTo: ActorRef<FileProtocol>
     ) : FileProtocol
+
     class CreateFileRes(val reqId: String, val successful: Boolean, val replicas: List<Pair<String, Set<String>>>) :
         FileProtocol
+
+    class ChunkWriteReq(val reqId: String) : FileProtocol
 }
