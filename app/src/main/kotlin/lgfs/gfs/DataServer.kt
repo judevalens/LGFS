@@ -3,6 +3,7 @@ package lgfs.gfs
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.*
+import lgfs.network.TCPConnectionHandler
 import java.net.ServerSocket
 import java.net.Socket
 import java.time.Duration
@@ -31,12 +32,8 @@ class DataServer(val context: ActorContext<Command>, val actorSystem: ActorSyste
         }
     }
 
-    fun startTCPServer() {
-        val socker = ServerSocket()
-    }
-
     private fun onIncomingConnection(msg: IncomingConnection): Behavior<Command> {
-
+        context.spawnAnonymous(TCPConnectionHandler.create(msg.socket))
         return Behaviors.same()
     }
 
