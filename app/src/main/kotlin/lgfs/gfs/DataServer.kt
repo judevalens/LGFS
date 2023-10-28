@@ -10,7 +10,7 @@ import java.time.Duration
 import java.util.concurrent.CompletionStage
 
 
-class DataServer(val context: ActorContext<Command>, val actorSystem: ActorSystem<Any>) :
+class DataServer( context: ActorContext<Command>, val actorSystem: ActorSystem<Any>) :
     AbstractBehavior<DataServer.Command>(context) {
     interface Command
     class IncomingConnection(val socket: Socket) : Command
@@ -33,7 +33,7 @@ class DataServer(val context: ActorContext<Command>, val actorSystem: ActorSyste
     }
 
     private fun onIncomingConnection(msg: IncomingConnection): Behavior<Command> {
-        context.spawnAnonymous(TCPConnectionHandler.create(msg.socket))
+        //context.spawnAnonymous(TCPConnectionHandler.create(msg.socket))
         return Behaviors.same()
     }
 

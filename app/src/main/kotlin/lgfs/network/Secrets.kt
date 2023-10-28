@@ -29,6 +29,10 @@ class Secrets {
     }
 
     fun getHostName(): String {
-        return  configJson.getString("lgfs_server_id")
+        return configJson.getString("lgfs_server_id")
+    }
+
+    fun getHomeDir(): String {
+        return "/app/lgfs_dir/"
     }
 }

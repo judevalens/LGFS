@@ -4,8 +4,22 @@
 package lgfs
 
 import lgfs.network.Manager
+import java.nio.ByteBuffer
+import java.nio.file.Paths
+import java.util.HexFormat
 
 
 fun main() {
-    val manager = Manager.launch()
+    //val manager = Manager.launch()
+    val commaFormat: HexFormat = HexFormat.ofDelimiter("")
+    val bytes = byteArrayOf(0, 1, 2, 3, 124, 125, 126, 127)
+    val b2 = ByteBuffer.allocate(8).putLong(-1850965000659022344).array()
+    val str: String = commaFormat.formatHex(b2)
+    println(str)
+    val parsed: ByteArray = commaFormat.parseHex(str)
+    assert(bytes.contentEquals(parsed))
+
+
+
+    println( Paths.get("a//","//b"))
 }

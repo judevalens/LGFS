@@ -22,7 +22,7 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
     class PayloadData(val payloadId: ByteArray, val payload: ByteArray) : FileProtocol
     class LeaseGrant(val chunkHandle: Long, val givenAt: Long, val duration: Long) : FileProtocol
     class Mutation(val clientId: String, val chunkHandle: Long, val payloadId: String) : FileProtocol
-    class CommitMutation() : FileProtocol
+    class CommitMutation(val clientId: String, val chunkHandle: Long) : FileProtocol
 
     init {
         val server = ServerSocket()
@@ -40,6 +40,7 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
 
             }
         }
+        tcpThread.start()
     }
 
     override fun createReceive(): Receive<FileProtocol> {
@@ -48,14 +49,17 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
 
     private fun onMutation(msg: Mutation): Behavior<FileProtocol> {
         if (!mutations.containsKey(msg.chunkHandle)) {
-            mutations[msg.chunkHandle] = MutationHolder()
+            mutations[msg.chunkHandle] = MutationHolder(0)
         }
-        mutations[msg.chunkHandle]!!.addMutation(msg.clientId, msg.payloadId)
+        mutations[msg.chunkHandle]!!.addMutation(msg.clientId, msg.payloadId,0)
         return Behaviors.same()
     }
 
-    private fun onCommitMutation(msg: CommitMutation) {
-
+    private fun onCommitMutation(msg: CommitMutation): Behavior<FileProtocol> {
+        if (mutations.containsKey(msg.chunkHandle)) {
+            mutations[msg.chunkHandle]!!.commitMutation(msg.clientId, TODO())
+        }
+        return Behaviors.same()
     }
 
     private fun onChunkWriteReq(msg: FileProtocol.ChunkWriteReq): Behavior<FileProtocol> {
@@ -69,7 +73,7 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
 
     private fun onPayloadData(msg: PayloadData): Behavior<FileProtocol> {
         val payloadId = String(msg.payloadId)
-        mutationData[payloadId] = ChunkData(0, 0, msg.payload)
+        mutationData[payloadId] = ChunkData(0, "", msg.payload)
         return Behaviors.same()
 
     }
@@ -81,6 +85,4 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
 
         return Behaviors.same()
     }
-
-
 }
