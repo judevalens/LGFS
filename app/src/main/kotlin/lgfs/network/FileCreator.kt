@@ -5,6 +5,7 @@ import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.StashBuffer
+import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.FileMetadata
 import lgfs.gfs.FileSystem
 import lgfs.gfs.StatManager
@@ -23,11 +24,11 @@ class FileCreator(
 ) {
     interface Command
     private class CreateFile(
-        val replicas: List<Pair<String, Set<String>>>
+        val chunks: List<ChunkMetadata>
     ) : Command
 
-    private class ReplicaLocationsReq : Command
-    private class ReplicaLocationsRes(val replicas: List<Pair<String, Set<String>>>) : Command
+    private class ChunkAllocationReq : Command
+    private class ChunkAllocationRes(val chunks: List<ChunkMetadata>) : Command
     private class Exit : Command
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
@@ -52,29 +53,29 @@ class FileCreator(
      * Ask the [StatManager] where to put this file's chunk
      */
     private fun reqReplicas(): Behavior<Command> {
-        return Behaviors.receive(Command::class.java).onMessage(ReplicaLocationsReq::class.java) {
-            context.ask(StatManager.ReplicaLocationsRes::class.java, statManager, Duration.ofMinutes(1), {
-                StatManager.ReplicaLocationsReq(fileMetadata, it)
+        return Behaviors.receive(Command::class.java).onMessage(ChunkAllocationReq::class.java) {
+            context.ask(StatManager.ChunkAllocationRes::class.java, statManager, Duration.ofMinutes(1), {
+                StatManager.ChunkAllocationReq(fileMetadata, it)
             }, { res, _ ->
                 res?.let {
-                    return@ask ReplicaLocationsRes(it.replicationLocations)
+                    return@ask ChunkAllocationRes(it.replicationLocations)
                 }
             })
             Behaviors.same()
-        }.onMessage(ReplicaLocationsRes::class.java, this::onReplicaRes).build()
+        }.onMessage(ChunkAllocationRes::class.java, this::onChunkAllocationRes).build()
     }
 
     private fun start(): Behavior<Command> {
         logger.info("Requesting replicas location for new file! file path: {}, req id: $reqId", fileMetadata.path)
-        stashBuffer.stash(ReplicaLocationsReq())
+        stashBuffer.stash(ChunkAllocationReq())
         return stashBuffer.unstashAll(reqReplicas())
     }
 
     /**
      * Uses [FileSystem] to create the file and pass back the chunk location to the parent of this actor
      */
-    private fun onReplicaRes(msg: ReplicaLocationsRes): Behavior<Command> {
-        stashBuffer.stash(CreateFile(msg.replicas))
+    private fun onChunkAllocationRes(msg: ChunkAllocationRes): Behavior<Command> {
+        stashBuffer.stash(CreateFile(msg.chunks))
         return stashBuffer.unstashAll(onCreateFile())
     }
 
@@ -84,24 +85,11 @@ class FileCreator(
                 logger.debug("adding file: ${fileMetadata.path} to directory tree, req id: $reqId")
                 val fileCreated = fs.addFile(fileMetadata)
                 if (fileCreated) {
-                    context.ask(
-                        ClusterProtocol.NoOp::class.java,
-                        replyTo, Duration.ofMinutes(100),
-                        {
-                            FileProtocol.CreateFileRes(reqId, true, msg2.replicas)
-                        },
-                        { _, _ ->
-                            logger.debug("Done process file creation request: $reqId, exiting...")
-                            Exit()
-                        }
-                    )
+                    replyTo.tell(FileProtocol.CreateFileRes(reqId, true, msg2.chunks))
                 } else {
                     logger.info("Failed to add file path: ${fileMetadata.path} to directory tree, req id: $reqId")
-                    FileProtocol.CreateFileRes(reqId, false, emptyList())
+                    replyTo.tell(FileProtocol.CreateFileRes(reqId, false, msg2.chunks))
                 }
-                Behaviors.same()
-            }
-            .onMessage(Exit::class.java) {
                 Behaviors.stopped()
             }.build()
 

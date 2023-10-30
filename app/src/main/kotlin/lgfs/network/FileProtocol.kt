@@ -1,6 +1,7 @@
 package lgfs.network
 
 import akka.actor.typed.ActorRef
+import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.FileMetadata
 
 interface FileProtocol {
@@ -10,7 +11,7 @@ interface FileProtocol {
         val replyTo: ActorRef<FileProtocol>
     ) : FileProtocol
 
-    class CreateFileRes(val reqId: String, val successful: Boolean, val replicas: List<Pair<String, Set<String>>>) :
+    class CreateFileRes(val reqId: String, val successful: Boolean, val chunks: List<ChunkMetadata>) :
         FileProtocol
 
     class ChunkWriteReq(val reqId: String) : FileProtocol

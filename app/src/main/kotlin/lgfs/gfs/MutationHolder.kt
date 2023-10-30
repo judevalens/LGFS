@@ -1,15 +1,17 @@
 package lgfs.gfs
 
-import lgfs.network.Secrets
 import java.nio.ByteBuffer
-import java.nio.file.Paths
 import java.util.*
 
 class MutationHolder(private val chunkHandle: Long) {
     private val chunkLeases = HashMap<Long, Lease>()
 
     // maps client id
-    val clientMutations = HashMap<String, MutableList<Mutation>>()
+    private val clientMutations = HashMap<String, MutableList<Mutation>>()
+    private lateinit var history: MutableList<ChunkFile.Memento>
+
+    private val originalChunk = ChunkFile(hexHandle(chunkHandle))
+    val previousState = originalChunk.save()
 
     fun addMutation(clientId: String, payloadId: String, offset: Int) {
         if (!clientMutations.containsKey("clientId")) {
@@ -23,25 +25,24 @@ class MutationHolder(private val chunkHandle: Long) {
         if (!chunkLeases.containsKey(chunkHandle)) return TODO()
         val lease = chunkLeases[chunkHandle]!!
         if (!lease.isValid()) return TODO()
-
         // TODO check that this client has pending mutations
-
         val mutations = clientMutations[clientId]!!
 
         mutations.forEach { mutation: Mutation ->
-            writeChunk(mutation, chunkBlocks[mutation.mutationId]!!)
+            originalChunk.writeChunk(mutation, chunkBlocks[mutation.mutationId]!!)
         }
 
         return true
     }
 
-    private fun writeChunk(mutation: Mutation, chunkData: ChunkData) {
+    fun replicate() {
+
+    }
+
+    private fun hexHandle(chunkHandle: Long): String {
         val buffer = ByteBuffer.allocate(8);
         buffer.putLong(chunkHandle)
         val hexFormatter = HexFormat.ofDelimiter("")
-        val chunkHexHandle = hexFormatter.formatHex(buffer.array())
-        val chunkPath = Paths.get(Secrets.getSecrets().getHomeDir(), chunkHexHandle)
-        val chunkFile = chunkPath.toFile()
-        chunkFile.outputStream().write(chunkData.data, mutation.offset, chunkData.data.size)
+        return hexFormatter.formatHex(buffer.array())
     }
 }

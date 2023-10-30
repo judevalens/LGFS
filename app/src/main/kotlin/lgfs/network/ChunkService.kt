@@ -22,10 +22,10 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
     class PayloadData(val payloadId: ByteArray, val payload: ByteArray) : FileProtocol
     class LeaseGrant(val chunkHandle: Long, val givenAt: Long, val duration: Long) : FileProtocol
     class Mutation(val clientId: String, val chunkHandle: Long, val payloadId: String) : FileProtocol
-    class CommitMutation(val clientId: String, val chunkHandle: Long) : FileProtocol
+    class CommitMutation(val clientId: String, val chunkHandle: Long, replicas: List<String>) : FileProtocol
 
     init {
-        val server = ServerSocket()
+        val server = ServerSocket(9005)
         val tcpThread = Thread {
             while (true) {
                 val incomingConnection = server.accept();
@@ -51,7 +51,7 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
         if (!mutations.containsKey(msg.chunkHandle)) {
             mutations[msg.chunkHandle] = MutationHolder(0)
         }
-        mutations[msg.chunkHandle]!!.addMutation(msg.clientId, msg.payloadId,0)
+        mutations[msg.chunkHandle]!!.addMutation(msg.clientId, msg.payloadId, 0)
         return Behaviors.same()
     }
 

@@ -7,12 +7,17 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 import java.util.*
+import java.util.concurrent.atomic.AtomicLong
+import kotlin.math.ceil
 
 class StatManager(context: ActorContext<Command>) : AbstractBehavior<StatManager.Command>(context) {
     interface Command {}
 
-    class ReplicaLocationsReq(val fileMetadata: FileMetadata, val replyTo: ActorRef<ReplicaLocationsRes>) : Command
-    class ReplicaLocationsRes(val replicationLocations: List<Pair<String, Set<String>>>) : Command
+    val CHUNK_SIZE = 64 * 1000 * 1000;
+    val atomicChunkId = AtomicLong()
+
+    class ChunkAllocationReq(val fileMetadata: FileMetadata, val replyTo: ActorRef<ChunkAllocationRes>) : Command
+    class ChunkAllocationRes(val replicationLocations: List<ChunkMetadata>) : Command
 
     private var chunkServers = HashMap<String, ChunkServerStat>()
     private val serverQueue = TreeMap<Double, ArrayList<String>>()
@@ -29,18 +34,26 @@ class StatManager(context: ActorContext<Command>) : AbstractBehavior<StatManager
 
     override fun createReceive(): Receive<Command> {
         return newReceiveBuilder()
-            .onMessage(ReplicaLocationsReq::class.java, this::onDequeueServers)
+            .onMessage(ChunkAllocationReq::class.java, this::onAllocateChunks)
             .build()
     }
 
-    private fun onDequeueServers(msg: ReplicaLocationsReq): Behavior<Command> {
-        msg.replyTo.tell(ReplicaLocationsRes(dequeueServers()))
+
+    private fun getReplicas(): MutableList<String> {
+        return ArrayList()
+    }
+
+    private fun onAllocateChunks(msg: ChunkAllocationReq): Behavior<Command> {
+        val fileMetadata = msg.fileMetadata
+        val numChunks = ceil(fileMetadata.size.toDouble() / CHUNK_SIZE).toInt()
+        val replicas = ArrayList<ChunkMetadata>()
+        for (i in 0..numChunks) {
+            replicas.add(ChunkMetadata(atomicChunkId.getAndDecrement(), getReplicas()))
+        }
+        msg.replyTo.tell(ChunkAllocationRes(replicas))
         return Behaviors.same()
     }
 
-    private fun dequeueServers(): List<Pair<String, Set<String>>> {
-        return emptyList()
-    }
 
     fun updateStat(chunkServerStat: ChunkServerStat): Boolean {
         val rank = chunkServerStat.getRanking()

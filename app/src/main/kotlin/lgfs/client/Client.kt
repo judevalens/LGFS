@@ -1,15 +1,12 @@
 package lgfs.client
 
-import akka.actor.typed.javadsl.AskPattern
 import lgfs.api.GfsApi
-import lgfs.api.MasterAPI
 import lgfs.gfs.FileMetadata
 import lgfs.network.FileProtocol
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.nio.file.Files
 import java.nio.file.Path
-import java.util.concurrent.CompletableFuture
 
 class Client(private val gfsApi: GfsApi) {
     interface Command
@@ -34,7 +31,7 @@ class Client(private val gfsApi: GfsApi) {
             } catch (_: NullPointerException) {
 
             }
-        }else {
+        } else {
             logger.info("File at: $filePathStr doesn't exist")
         }
 
