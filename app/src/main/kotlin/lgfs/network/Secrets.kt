@@ -29,7 +29,7 @@ class Secrets {
     }
 
     fun getHostName(): String {
-        return configJson.getString("lgfs_server_id")
+        return System.getenv("HOSTNAME")
     }
 
     fun getHomeDir(): String {

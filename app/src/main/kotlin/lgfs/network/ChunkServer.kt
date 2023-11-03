@@ -6,6 +6,7 @@ import akka.actor.typed.javadsl.*
 import akka.actor.typed.pubsub.Topic
 import akka.cluster.typed.Cluster
 import lgfs.gfs.ChunkMetadata
+import lgfs.gfs.ChunkServerState
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
@@ -61,7 +62,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
     private fun handleMasterUp(msg: ClusterProtocol.MasterUP): Behavior<ClusterProtocol> {
         logger.info("Master is up at path {}", msg.masterRef.path())
         masterRef = msg.masterRef
-        masterRef.tell(ClusterProtocol.ChunkUp(context.self, Secrets.getSecrets().getHostName()))
+        masterRef.tell(ClusterProtocol.ChunkUp(context.self, Secrets.getSecrets().getHostName(), getState()))
         isInitialized = true
         return Behaviors.same()
     }
@@ -76,7 +77,15 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
      *
      */
     private fun onSendChunkUp(msg: SendChunkUp): Behavior<ClusterProtocol> {
-        protocolTopic.tell(Topic.publish(ClusterProtocol.ChunkUp(context.self, Secrets.getSecrets().getHostName())))
+        protocolTopic.tell(
+            Topic.publish(
+                ClusterProtocol.ChunkUp(
+                    context.self,
+                    Secrets.getSecrets().getHostName(),
+                    getState()
+                )
+            )
+        )
         return Behaviors.same()
     }
 
@@ -94,5 +103,9 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
             masterRef.tell(inventory)
         }
         return Behaviors.same()
+    }
+
+    private fun getState(): ChunkServerState {
+        return ChunkServerState(Secrets.getSecrets().getHostName())
     }
 }

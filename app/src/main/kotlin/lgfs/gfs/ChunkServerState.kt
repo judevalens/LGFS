@@ -1,9 +1,6 @@
 package lgfs.gfs
 
-import akka.actor.typed.ActorRef
-import lgfs.network.ClusterProtocol
-
-class ChunkServerStat(val chunkServerHostName: String) {
+class ChunkServerState(val chunkServerHostName: String) {
     var lastChunkCreateAt = -1
         private set
 

@@ -18,8 +18,9 @@ class StatManager(context: ActorContext<Command>) : AbstractBehavior<StatManager
 
     class ChunkAllocationReq(val fileMetadata: FileMetadata, val replyTo: ActorRef<ChunkAllocationRes>) : Command
     class ChunkAllocationRes(val replicationLocations: List<ChunkMetadata>) : Command
+    class UpdateServerState(val state: ChunkServerState)
 
-    private var chunkServers = HashMap<String, ChunkServerStat>()
+    private var chunkServers = HashMap<String, ChunkServerState>()
     private val serverQueue = TreeMap<Double, ArrayList<String>>()
     private val chunkIdToRanks: HashMap<String, Double> = HashMap()
     private val numReplica = 3
@@ -54,8 +55,12 @@ class StatManager(context: ActorContext<Command>) : AbstractBehavior<StatManager
         return Behaviors.same()
     }
 
+    private fun onUpdateServerState(msg: UpdateServerState) {
+        chunkServers[msg.state.chunkServerHostName] = msg.state
+    }
 
-    fun updateStat(chunkServerStat: ChunkServerStat): Boolean {
+
+    fun updateStat(chunkServerStat: ChunkServerState): Boolean {
         val rank = chunkServerStat.getRanking()
 
         if (chunkIdToRanks.containsKey(chunkServerStat.chunkServerHostName)) {

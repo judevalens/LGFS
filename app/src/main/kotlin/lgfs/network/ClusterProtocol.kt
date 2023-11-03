@@ -3,7 +3,7 @@ package lgfs.network
 import akka.actor.typed.ActorRef
 import akka.actor.typed.receptionist.Receptionist
 import com.fasterxml.jackson.annotation.JsonCreator
-import lgfs.gfs.ChunkServerStat
+import lgfs.gfs.ChunkServerState
 
 interface ClusterProtocol {
     class Handshake(listing: Receptionist.Listing) : ClusterProtocol, JsonSerializable
@@ -13,7 +13,7 @@ interface ClusterProtocol {
     class ChunkUp @JsonCreator constructor(
         val chunkRef: ActorRef<ClusterProtocol>,
         val serverHostName: String,
-        val stat: ChunkServerStat
+        val stat: ChunkServerState
     ) : ClusterProtocol, JsonSerializable
 
     class ChunkInventory @JsonCreator constructor(val serverHostName: String, val chunkIds: MutableList<Long>) :

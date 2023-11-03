@@ -6,10 +6,16 @@
  * This project uses @Incubating APIs which are subject to change.
  */
 
+rootProject.name = "LGFS"
+include("app")
+pluginManagement {
+    repositories {
+        gradlePluginPortal()
+        google()
+    }
+}
 plugins {
     // Apply the foojay-resolver plugin to allow automatic download of JDKs
     id("org.gradle.toolchains.foojay-resolver-convention") version "0.7.0"
 }
 
-rootProject.name = "LGFS"
-include("app")

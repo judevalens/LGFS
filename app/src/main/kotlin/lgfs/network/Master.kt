@@ -4,7 +4,7 @@ import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.*
 import akka.actor.typed.pubsub.Topic
-import lgfs.gfs.ChunkServerStat
+import lgfs.gfs.ChunkServerState
 import lgfs.gfs.FileMetadata
 import lgfs.gfs.FileSystem
 import lgfs.gfs.StatManager
@@ -29,7 +29,7 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
     }
 
     private var fsRequestId = 0L
-    private val chunkServers = HashMap<String, ChunkServerStat>()
+    private val chunkServers = HashMap<String, ChunkServerState>()
     private val fs = FileSystem()
     private val statManager: ActorRef<StatManager.Command>
     private val protocolTopic: ActorRef<Topic.Command<ClusterProtocol>> =
@@ -66,7 +66,8 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
 
     private fun onChunkUp(msg: ClusterProtocol.ChunkUp): Behavior<ClusterProtocol> {
         logger.info("Chunk server: {}, is up at path: {}", msg.serverHostName, msg.chunkRef.path())
-        chunkServers[msg.serverHostName] = ChunkServerStat(msg.serverHostName)
+        chunkServers[msg.serverHostName] = ChunkServerState(msg.serverHostName)
+        //statManager.tell()
         msg.chunkRef.tell(ClusterProtocol.RequestChunkInventory())
         return Behaviors.same()
     }

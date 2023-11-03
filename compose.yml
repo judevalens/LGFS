@@ -18,7 +18,7 @@ services:
       - type: bind
         source: "./app/src/main/resources/test.txt"
         target: "/app/conf/test.txt"
-    profiles: ["master","all"]
+    profiles: [ "master","all" ]
 
   chunk-1:
     image: lgfs:latest
@@ -29,17 +29,19 @@ services:
         ipv4_address: 172.20.128.3
     environment:
       NODE_PORT: 2552
+      API_PORT: 9005
+      DATA_PORT: 9006
       HOST_NAME: 172.20.128.3
       CONF_PATH: "/app/conf/application.conf"
     volumes:
       - type: bind
         source: "./app/src/main/resources/chunk.conf"
         target: "/app/conf/application.conf"
-    profiles: ["chunk","all"]
+    profiles: [ "chunk","all" ]
 
 networks:
   static-network:
-      ipam:
-        config:
-          - subnet: 172.20.0.0/16
-            #docker-compose v3+ do not use ip_range
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+          #docker-compose v3+ do not use ip_range
