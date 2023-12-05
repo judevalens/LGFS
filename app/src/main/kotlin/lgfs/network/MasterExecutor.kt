@@ -7,19 +7,19 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 import lgfs.gfs.FileSystem
-import lgfs.gfs.StatManager
+import lgfs.gfs.StateManager
 import org.slf4j.LoggerFactory
 
 class MasterExecutor(
     private val context: ActorContext<FileProtocol>,
-    private val statManager: ActorRef<StatManager.Command>,
+    private val statManager: ActorRef<StateManager.Command>,
     private val fs: FileSystem,
 ) : AbstractBehavior<FileProtocol>(context) {
     private val logger: org.slf4j.Logger = LoggerFactory.getLogger(this::class.java)
 
     companion object {
         fun create(
-            statManager: ActorRef<StatManager.Command>,
+            statManager: ActorRef<StateManager.Command>,
             fs: FileSystem
         ): Behavior<FileProtocol> {
             return Behaviors.setup {

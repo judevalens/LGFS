@@ -9,16 +9,20 @@ import akka.cluster.Member
 import akka.cluster.typed.Cluster
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import lgfs.api.GfsApi
+import lgfs.api.grpc.FileService
+import lgfs.api.grpc.GFSServer
 import lgfs.client.Client
-import lgfs.gfs.StatManager
+import lgfs.gfs.StateManager
 import java.io.FileInputStream
 import java.nio.file.Files
 import java.nio.file.Paths
-import kotlin.system.exitProcess
 
 
-class Manager(context: ActorContext<Command>) : AbstractBehavior<Manager.Command>(context) {
+class Manager(context: ActorContext<Command>) :
+    AbstractBehavior<Manager.Command>(context) {
     interface Command {}
 
     private val test_path = "/app/conf/test.txt"
@@ -36,7 +40,7 @@ class Manager(context: ActorContext<Command>) : AbstractBehavior<Manager.Command
         private set
     lateinit var masterExecutor: ActorRef<FileProtocol>
         private set
-    lateinit var statManager: ActorRef<StatManager.Command>
+    lateinit var statManager: ActorRef<StateManager.Command>
         private set
     private val fileSystem: lgfs.gfs.FileSystem = lgfs.gfs.FileSystem()
 
@@ -76,13 +80,26 @@ class Manager(context: ActorContext<Command>) : AbstractBehavior<Manager.Command
                 val rawConf = String(confStream.readAllBytes())
                 println(rawConf)
                 val parsedConf = ConfigFactory.parseString(rawConf)
-                val config = ConfigFactory.load(parsedConf).withFallback(ConfigFactory.load())
+                var config = ConfigFactory.load(parsedConf).withFallback(ConfigFactory.load())
                 println(confPath + ", exits:  ${Files.exists(Paths.get(confPath))}}")
-                println(parsedConf.getString("akka.remote.artery.canonical.port"))
                 println("is resolved: ${config.isResolved}")
-                return config
+                val confMap = HashMap<String, String>();
+
+
+                if (System.getenv("NODE_PORT").isNotEmpty()) {
+                    confMap["akka.remote.artery.canonical.port"] = System.getenv("NODE_PORT")
+                    confMap["akka.remote.artery.canonical.hostname"] = System.getenv("HOST_NAME")
+                    println("added custom conf")
+                }
+
+                val conf2 = ConfigFactory.load(ConfigFactory.parseMap(confMap).withFallback(config))
+                println(
+                    "node port is: " + ConfigFactory.parseMap(confMap).getString("akka.remote.artery.canonical.port")
+                )
+
+                return conf2
             }
-            exitProcess(2)
+            return ConfigFactory.load()
         }
     }
 
@@ -91,11 +108,13 @@ class Manager(context: ActorContext<Command>) : AbstractBehavior<Manager.Command
             .onMessage(
                 LaunchMaster::class.java
             ) { msg ->
-                statManager = context.spawn(StatManager.create(), "stat_manager")
+                statManager = context.spawn(StateManager.create(), "stat_manager")
                 masterActor = context.spawn(Master.create(), msg.name)
                 masterExecutor =
                     context.spawn(MasterExecutor.create(statManager, fileSystem), "master_executor_service")
-                launchClientAPI()
+                /*runBlocking {
+                    launchClientAPI()
+                }*/
                 Behaviors.same()
             }
             .onMessage(LaunchChunk::class.java) { msg ->
@@ -105,10 +124,16 @@ class Manager(context: ActorContext<Command>) : AbstractBehavior<Manager.Command
         return builder.build()
     }
 
-    private fun launchClientAPI() {
+    private suspend fun launchClientAPI() {
         val masterApi: GfsApi = GfsApi(masterExecutor, system)
         val client = Client(masterApi)
+        delay(2000)
         client.createFile(test_path)
+
+        // launch grpc server
+        val fileService = FileService(masterApi)
+        val server = GFSServer(fileService)
+        server.startServer()
     }
 
     fun isMasterActorUp(): Boolean {

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+
+
+service GFS {
+  rpc createFile(CreateFileReq) returns (CreateFileRes);
+}
+
+message CreateFileReq {
+  string fileName = 1;
+  int32 fileSize = 2;
+}
+
+message CreateFileRes {
+  int32 status = 1;
+  repeated Chunk chunks = 2;
+}
+
+message Chunk {
+  int64 chunkHandle = 1;
+  int64 chunkIndex = 2;
+  repeated string replicas = 3;
+}

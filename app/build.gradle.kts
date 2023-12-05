@@ -59,6 +59,8 @@ dependencies {
     api("com.google.protobuf:protobuf-java-util:${Versions.PROTOBUF_VERSION}")
     api("com.google.protobuf:protobuf-kotlin:${Versions.PROTOBUF_VERSION}")
     api("io.grpc:grpc-kotlin-stub:${Versions.GRPC_KOTLIN_VERSION}")
+    implementation("io.grpc:grpc-netty-shaded:1.58.0")
+
 }
 
 testing {
@@ -81,7 +83,7 @@ sourceSets {
             include("**/*.protodevel'")
         }
         java {
-            setSrcDirs(listOf("src/main/kotlin"))
+            setSrcDirs(listOf("src/main/kotlin", "build/generated"))
             resources {
                 srcDirs("src/main/resources")
             }

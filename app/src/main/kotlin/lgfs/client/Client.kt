@@ -24,8 +24,14 @@ class Client(private val gfsApi: GfsApi) {
                 logger.info("Sending create request to master")
                 val file = java.io.File(filePath.toUri())
                 val fileMetadata = FileMetadata(filePathStr, false, file.length())
-                val res = gfsApi.createFile(fileMetadata).toCompletableFuture().get() as FileProtocol.CreateFileRes
-                logger.info("Create request is successful: ${res.successful}")
+                when (val res = gfsApi.createFile(fileMetadata).toCompletableFuture().get()) {
+                    is FileProtocol.CreateFileRes -> {
+                        logger.info("Create request is successful: ${res.successful}")
+                        res.chunks.forEach {
+                            logger.debug("chunk id ${it.handle}, primary replicas: ${it.replicas[0]}")
+                        }
+                    }
+                }
             } catch (_: IllegalArgumentException) {
 
             } catch (_: NullPointerException) {

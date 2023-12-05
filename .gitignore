@@ -1,2 +1,5 @@
 target
 .idea
+app/build
+app/out
+.gradle/

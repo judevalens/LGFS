@@ -22,6 +22,7 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
     class PayloadData(val payloadId: ByteArray, val payload: ByteArray) : FileProtocol
     class LeaseGrant(val chunkHandle: Long, val givenAt: Long, val duration: Long) : FileProtocol
     class Mutation(val clientId: String, val chunkHandle: Long, val payloadId: String) : FileProtocol
+    class Mutations(val mutations: List<Mutation>) : FileProtocol
     class CommitMutation(val clientId: String, val chunkHandle: Long, replicas: List<String>) : FileProtocol
 
     init {
@@ -47,11 +48,13 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
         TODO("Not yet implemented")
     }
 
-    private fun onMutation(msg: Mutation): Behavior<FileProtocol> {
-        if (!mutations.containsKey(msg.chunkHandle)) {
-            mutations[msg.chunkHandle] = MutationHolder(0)
+    private fun onMutations(msg: Mutations): Behavior<FileProtocol> {
+        msg.mutations.forEach { mutation ->
+            if (!mutations.containsKey(mutation.chunkHandle)) {
+                mutations[mutation.chunkHandle] = MutationHolder(0)
+            }
+            mutations[mutation.chunkHandle]!!.addMutation(mutation.clientId, mutation.payloadId, 0)
         }
-        mutations[msg.chunkHandle]!!.addMutation(msg.clientId, msg.payloadId, 0)
         return Behaviors.same()
     }
 

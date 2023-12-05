@@ -3,7 +3,9 @@ package lgfs.api
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.javadsl.AskPattern
+import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.FileMetadata
+import lgfs.gfs.Mutation
 import lgfs.network.FileProtocol
 import lgfs.network.Manager
 import java.time.Duration

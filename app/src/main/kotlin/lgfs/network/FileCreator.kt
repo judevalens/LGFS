@@ -8,7 +8,7 @@ import akka.actor.typed.javadsl.StashBuffer
 import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.FileMetadata
 import lgfs.gfs.FileSystem
-import lgfs.gfs.StatManager
+import lgfs.gfs.StateManager
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
@@ -19,7 +19,7 @@ class FileCreator(
     private val context: ActorContext<Command>,
     private val stashBuffer: StashBuffer<Command>,
     private val fs: FileSystem,
-    private val statManager: ActorRef<StatManager.Command>,
+    private val statManager: ActorRef<StateManager.Command>,
     private val replyTo: ActorRef<FileProtocol>
 ) {
     interface Command
@@ -28,7 +28,7 @@ class FileCreator(
     ) : Command
 
     private class ChunkAllocationReq : Command
-    private class ChunkAllocationRes(val chunks: List<ChunkMetadata>) : Command
+    private class ChunkAllocationRes(val isSuccessful: Boolean, val chunks: List<ChunkMetadata>) : Command
     private class Exit : Command
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
@@ -38,7 +38,7 @@ class FileCreator(
             reqId: String,
             fileMetadata: FileMetadata,
             fs: FileSystem,
-            statManager: ActorRef<StatManager.Command>,
+            statManager: ActorRef<StateManager.Command>,
             replyTo: ActorRef<FileProtocol>
         ): Behavior<Command> {
             return Behaviors.withStash(1) { stash ->
@@ -50,15 +50,15 @@ class FileCreator(
     }
 
     /**
-     * Ask the [StatManager] where to put this file's chunk
+     * Ask the [StateManager] where to put this file's chunk
      */
     private fun reqReplicas(): Behavior<Command> {
         return Behaviors.receive(Command::class.java).onMessage(ChunkAllocationReq::class.java) {
-            context.ask(StatManager.ChunkAllocationRes::class.java, statManager, Duration.ofMinutes(1), {
-                StatManager.ChunkAllocationReq(fileMetadata, it)
+            context.ask(StateManager.ChunkAllocationRes::class.java, statManager, Duration.ofMinutes(1), {
+                StateManager.ChunkAllocationReq(fileMetadata, it)
             }, { res, _ ->
                 res?.let {
-                    return@ask ChunkAllocationRes(it.replicationLocations)
+                    return@ask ChunkAllocationRes(it.isSuccessful, it.replicationLocations)
                 }
             })
             Behaviors.same()

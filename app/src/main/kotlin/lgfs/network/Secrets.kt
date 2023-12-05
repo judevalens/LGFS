@@ -21,7 +21,7 @@ class Secrets {
     }
 
     fun getName(): String {
-        return configJson.getString("lgfs_server_id")
+        return getHostName()
     }
 
     fun getRole(): String {
@@ -29,7 +29,7 @@ class Secrets {
     }
 
     fun getHostName(): String {
-        return System.getenv("HOSTNAME")
+        return System.getenv("HOST_NAME")
     }
 
     fun getHomeDir(): String {

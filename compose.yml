@@ -39,6 +39,63 @@ services:
         target: "/app/conf/application.conf"
     profiles: [ "chunk","all" ]
 
+  chunk-2:
+    image: lgfs:latest
+    ports:
+      - "2553:2553"
+    networks:
+      static-network:
+        ipv4_address: 172.20.128.4
+    environment:
+      NODE_PORT: 2553
+      API_PORT: 9005
+      DATA_PORT: 9006
+      HOST_NAME: 172.20.128.4
+      CONF_PATH: "/app/conf/application.conf"
+    volumes:
+      - type: bind
+        source: "./app/src/main/resources/chunk.conf"
+        target: "/app/conf/application.conf"
+    profiles: [ "chunk","all" ]
+
+  chunk-3:
+    image: lgfs:latest
+    ports:
+      - "2554:2554"
+    networks:
+      static-network:
+        ipv4_address: 172.20.128.5
+    environment:
+      NODE_PORT: 2554
+      API_PORT: 9005
+      DATA_PORT: 9006
+      HOST_NAME: 172.20.128.5
+      CONF_PATH: "/app/conf/application.conf"
+    volumes:
+      - type: bind
+        source: "./app/src/main/resources/chunk.conf"
+        target: "/app/conf/application.conf"
+    profiles: [ "chunk","all" ]
+
+  chunk-4:
+    image: lgfs:latest
+    ports:
+      - "2555:2555"
+    networks:
+      static-network:
+        ipv4_address: 172.20.128.6
+    environment:
+      NODE_PORT: 2555
+      API_PORT: 9005
+      DATA_PORT: 9006
+      HOST_NAME: 172.20.128.6
+      CONF_PATH: "/app/conf/application.conf"
+    volumes:
+      - type: bind
+        source: "./app/src/main/resources/chunk.conf"
+        target: "/app/conf/application.conf"
+    profiles: [ "chunk","all" ]
+
 networks:
   static-network:
     ipam:
