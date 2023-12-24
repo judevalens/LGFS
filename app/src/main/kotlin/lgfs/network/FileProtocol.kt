@@ -26,5 +26,8 @@ interface FileProtocol {
         val offset: Int
     ) : FileProtocol
 
+    class CommitMutation(val clientId: String, val chunkHandle: Long, replicas: List<String>) : FileProtocol
+
+
     class Mutations(val mutations: List<Mutation>) : FileProtocol
 }

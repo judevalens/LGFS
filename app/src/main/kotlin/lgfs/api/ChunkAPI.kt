@@ -10,10 +10,10 @@ import java.time.Duration
 import java.util.concurrent.CompletionStage
 
 class ChunkAPI(private val chunkService: ActorRef<FileProtocol>, private val system: ActorSystem<Manager.Command>) {
-    fun addMutations(mutations: List<ChunkService.Mutation>) {
+    fun addMutations(mutations: List<FileProtocol.Mutation>) {
         val res: CompletionStage<FileProtocol> = AskPattern.ask(
             chunkService, {
-                ChunkService.Mutations(mutations)
+                FileProtocol.Mutations(mutations)
             },
             Duration.ofDays(100000),
             system.scheduler()

@@ -15,7 +15,6 @@ import java.net.ServerSocket
 import java.net.Socket
 
 class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileProtocol>(context) {
-
     private val leases = HashMap<Long, Lease>()
     private val mutations = HashMap<Long, MutationHolder>()
     private val mutationData = HashMap<String, ChunkData>()
@@ -26,7 +25,6 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
     class PayloadData(val mutationId: ByteArray, val payload: ByteArray) : FileProtocol
     class LeaseGrant(val chunkHandle: Long, val givenAt: Long, val duration: Long) : FileProtocol
 
-    class CommitMutation(val clientId: String, val chunkHandle: Long, replicas: List<String>) : FileProtocol
 
     companion object {
         fun create(): Behavior<FileProtocol> {
@@ -40,7 +38,10 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
         val server = ServerSocket(9005)
         val tcpThread = Thread {
             while (true) {
-                logger.info("Data server is listing...........")
+                logger.info(
+                    "" +
+                            "..........."
+                )
                 val incomingConnection = server.accept();
                 context.self.tell(SendIncomingConnection(incomingConnection))
             }
@@ -51,6 +52,10 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
     override fun createReceive(): Receive<FileProtocol> {
         return newReceiveBuilder()
             .onMessage(FileProtocol.Mutations::class.java, this::onMutations)
+            .onMessage(FileProtocol.CommitMutation::class.java, this::onCommitMutation)
+            .onMessage(LeaseGrant::class.java, this::onLeaseGrant)
+            .onMessage(SendIncomingConnection::class.java, this::onSendIncomingConnection)
+            .onMessage(PayloadData::class.java, this::onPayloadData)
             .build()
     }
 
@@ -71,7 +76,7 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
         return TODO()
     }
 
-    private fun onCommitMutation(msg: CommitMutation): Behavior<FileProtocol> {
+    private fun onCommitMutation(msg: FileProtocol.CommitMutation): Behavior<FileProtocol> {
         if (mutations.containsKey(msg.chunkHandle)) {
             mutations[msg.chunkHandle]!!.commitMutation(msg.clientId, TODO())
         }
@@ -94,10 +99,8 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
     }
 
     private fun onLeaseGrant(msg: LeaseGrant): Behavior<FileProtocol> {
-
         val lease = Lease(msg.chunkHandle, msg.givenAt)
         leases[msg.chunkHandle] = lease
-
         return Behaviors.same()
     }
 }
