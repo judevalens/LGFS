@@ -15,4 +15,16 @@ interface FileProtocol {
         FileProtocol
 
     class ChunkWriteReq(val reqId: String) : FileProtocol
+
+    class Mutation(
+        val clientId: String,
+        val chunkHandle: Long,
+        val mutationId: String,
+        val primary: String,
+        val replicas: String,
+        val serial: Int,
+        val offset: Int
+    ) : FileProtocol
+
+    class Mutations(val mutations: List<Mutation>) : FileProtocol
 }

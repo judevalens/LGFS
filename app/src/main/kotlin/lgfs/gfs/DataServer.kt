@@ -1,5 +1,6 @@
 package lgfs.gfs
 
+import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.*
@@ -10,10 +11,10 @@ import java.time.Duration
 import java.util.concurrent.CompletionStage
 
 
-class DataServer( context: ActorContext<Command>, val actorSystem: ActorSystem<Any>) :
+class DataServer(private val context: ActorContext<Command>, private val actorSystem: ActorSystem<Any>) :
     AbstractBehavior<DataServer.Command>(context) {
     interface Command
-    class IncomingConnection(val socket: Socket) : Command
+    class IncomingConnection(val socket: Socket, val replyTo : ActorRef<Command>) : Command
 
     init {
         val server = ServerSocket()
@@ -23,7 +24,7 @@ class DataServer( context: ActorContext<Command>, val actorSystem: ActorSystem<A
                 val res: CompletionStage<Command> = AskPattern.ask(
                     context.self,
                     {
-                        IncomingConnection(incomingConnection)
+                        IncomingConnection(incomingConnection,it)
                     },
                     Duration.ofMinutes(10000),
                     actorSystem.scheduler()
@@ -33,7 +34,7 @@ class DataServer( context: ActorContext<Command>, val actorSystem: ActorSystem<A
     }
 
     private fun onIncomingConnection(msg: IncomingConnection): Behavior<Command> {
-        //context.spawnAnonymous(TCPConnectionHandler.create(msg.socket))
+        //context.spawnAnonymous(TCPConnectionHandler.create(msg.socket,msg.replyTo))
         return Behaviors.same()
     }
 

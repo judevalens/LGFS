@@ -35,7 +35,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
     private var masterServiceKey: Optional<ServiceKey<ClusterProtocol>> = Optional.empty()
     private val masterUpMsg: Optional<ClusterProtocol.MasterUP> = Optional.empty()
     private val serviceKeys = HashMap<ServiceKey<ClusterProtocol>, ClusterProtocol.ChunkUp>();
-
+    val chunkService = context.spawnAnonymous(ChunkService.create())
     init {
         masterUpTopic.tell(Topic.subscribe(context.self))
         chunkUpTopic.tell(Topic.subscribe(context.self))

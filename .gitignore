@@ -3,3 +3,4 @@ target
 app/build
 app/out
 .gradle/
+.gradle/*

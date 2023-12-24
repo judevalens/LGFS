@@ -1,5 +1,6 @@
 package lgfs.gfs
 
+import lgfs.network.FileProtocol
 import lgfs.network.Secrets
 import java.nio.file.Paths
 import java.util.*
@@ -30,10 +31,11 @@ class ChunkFile(private val chunkPath: String) {
 
     }
 
-    fun writeChunk(mutation: Mutation, chunkData: ChunkData) {
+    fun writeChunk(mutation: FileProtocol.Mutation, chunkData: ChunkData) {
         val chunkPath = Paths.get(Secrets.getSecrets().getHomeDir(), chunkPath)
         val chunkFile = chunkPath.toFile()
-        chunkFile.outputStream().write(chunkData.data, mutation.offset, chunkData.data.size)
+        TODO()
+        //chunkFile.outputStream().write(chunkData.data, mutation.offset, chunkData.data.size)
     }
 
 }

@@ -6,6 +6,10 @@ service GFS {
   rpc createFile(CreateFileReq) returns (CreateFileRes);
 }
 
+service ChunkService {
+    rpc
+}
+
 message CreateFileReq {
   string fileName = 1;
   int32 fileSize = 2;
@@ -20,4 +24,16 @@ message Chunk {
   int64 chunkHandle = 1;
   int64 chunkIndex = 2;
   repeated string replicas = 3;
+}
+
+enum MutationType {
+  Append = 0;
+  Write = 1;
+}
+
+message Mutations {
+  int64 chunkHandle = 1;
+  int64 chunkIndex = 2;
+  int64 serial = 3;
+  MutationType type = 4;
 }

@@ -112,9 +112,9 @@ class Manager(context: ActorContext<Command>) :
                 masterActor = context.spawn(Master.create(), msg.name)
                 masterExecutor =
                     context.spawn(MasterExecutor.create(statManager, fileSystem), "master_executor_service")
-                /*runBlocking {
+                runBlocking {
                     launchClientAPI()
-                }*/
+                }
                 Behaviors.same()
             }
             .onMessage(LaunchChunk::class.java) { msg ->
