@@ -30,6 +30,18 @@ class AllocatorTest {
         val fileMetadata = FileMetadata("test.txt", false, 1000000);
         val res = allocatorUnderTest.allocateChunks(fileMetadata)
         assertEquals(true, res.first)
+        assertEquals(1,res.second?.size)
+    }
+    @Test
+    fun `test server state is not duplicated`() {
+
+        allocatorUnderTest.updateState(ChunkServerState("testHostname"))
+        allocatorUnderTest.updateState(ChunkServerState("testHostname"))
+        allocatorUnderTest.updateState(ChunkServerState("testHostname"))
+        val fileMetadata = FileMetadata("test.txt", false, 1000000);
+        val res = allocatorUnderTest.allocateChunks(fileMetadata)
+        assertEquals(true, res.first)
+        assertEquals(1,res.second?.get(0)?.replicas?.size)
     }
 
     @Test
@@ -70,9 +82,7 @@ class AllocatorTest {
         val res = allocatorUnderTest.allocateChunks(fileMetadata)
         assertEquals(true, res.first)
         assertEquals(nChunks.toInt(), res.second?.size)
-
         assertNotNull(res.second)
-
         res.second?.forEach {
             assertEquals("hostname3", it.replicas[2])
         }

@@ -28,6 +28,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
     private var isInitialized = false
     val cluster: Cluster = Cluster.get(context.system)
     private lateinit var masterRef: ActorRef<ClusterProtocol>
+    private lateinit var masterInstanceId: String
     private val chunks = HashMap<Long, ChunkMetadata>()
     private val chunkServers = HashMap<String, ActorRef<ClusterProtocol>>()
     private val listingAdapter = context.messageAdapter(Receptionist.Listing::class.java) {
@@ -37,7 +38,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
     private var masterServiceKey: Optional<ServiceKey<ClusterProtocol>> = Optional.empty()
     private val masterUpMsg: Optional<ClusterProtocol.MasterUP> = Optional.empty()
     private val serviceKeys = HashMap<ServiceKey<ClusterProtocol>, ClusterProtocol.ChunkUp>();
-    val chunkService = context.spawnAnonymous(ChunkService.create())
+    private val chunkService: ActorRef<FileProtocol> = context.spawnAnonymous(ChunkService.create())
 
     init {
         masterUpTopic.tell(Topic.subscribe(context.self))
@@ -48,7 +49,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
             CHUNK_UP_TIMER_KEY,
             SendChunkUp(),
             Duration.ZERO,
-            Duration.ofSeconds(1)
+            Duration.ofSeconds(5)
         )
 
         val chunkApi = ChunkAPI(chunkService, context.system)
@@ -86,9 +87,13 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
     }
 
     private fun handleMasterUp(msg: ClusterProtocol.MasterUP): Behavior<ClusterProtocol> {
-        logger.info("Received master up signal, retrieving actor ref at : {}", msg.serverHostName)
-        masterServiceKey = Optional.of(ServiceKey.create(ClusterProtocol::class.java, msg.serverHostName))
-        context.system.receptionist().tell(Receptionist.find(masterServiceKey.get(), listingAdapter))
+        if (!this::masterRef.isInitialized || !this::masterInstanceId.isInitialized || msg.instanceId != masterInstanceId) {
+            logger.info("Received master up signal from : {}, retrieving actor ref", msg.serverHostName)
+            masterServiceKey = Optional.of(ServiceKey.create(ClusterProtocol::class.java, msg.serverHostName))
+            context.system.receptionist().tell(Receptionist.find(masterServiceKey.get(), listingAdapter))
+        } else {
+            logger.info("Received master up signal from : {}",msg.serverHostName)
+        }
         return Behaviors.same()
     }
 

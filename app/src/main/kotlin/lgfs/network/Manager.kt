@@ -37,10 +37,6 @@ class Manager(context: ActorContext<Command>) :
 
     private val fileSystem: lgfs.gfs.FileSystem = lgfs.gfs.FileSystem()
 
-    class Handshake(listing: Receptionist.Listing) {
-
-    }
-
     companion object {
         private lateinit var system: ActorSystem<Manager.Command>
         private lateinit var cluster: Cluster
@@ -102,8 +98,6 @@ class Manager(context: ActorContext<Command>) :
                 LaunchMaster::class.java
             ) { msg ->
                 masterActor = context.spawn(Master.create(), msg.name)
-                masterExecutor =
-                    context.spawn(MasterExecutor.create(fileSystem), "master_executor_service")
                 runBlocking {
                     launchClientAPI()
                 }

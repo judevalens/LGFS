@@ -104,7 +104,8 @@ class FileCreator(
                 }
                 val fileCreated = fs.addFile(fileMetadata)
                 if (fileCreated) {
-                    logger.info("{} - Created file at: {}", reqId, fileMetadata.path)
+                    logger.info("{} - Created file at: {}, nReplicas: {}", reqId, fileMetadata.path,
+                        msg.chunks?.get(0)?.replicas?.size)
                     replyTo.tell(FileProtocol.CreateFileRes(reqId, true, msg.chunks))
                 } else {
                     logger.info("{} - Failed to add file path: {} to directory tree", reqId, fileMetadata.path)

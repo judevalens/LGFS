@@ -15,7 +15,7 @@ class Allocator {
     private val atomicChunkId = AtomicLong()
 
     companion object {
-         const val CHUNK_SIZE = 64 * 1000 * 1000;
+        const val CHUNK_SIZE = 64 * 1000 * 1000;
     }
 
 
@@ -50,23 +50,26 @@ class Allocator {
      * Updates the server queue by recomputing the new state's rank
      */
     fun updateState(chunkServerState: ChunkServerState): Boolean {
-        val rank = chunkServerState.getRanking()
+        val newRank = chunkServerState.getRanking()
 
-       /* if (chunkIdToRanks.containsKey(chunkServerState.chunkServerHostName)) {
+        // removing chunk server state from the queue if already present before inserting the new state
+        if (chunkIdToRanks.containsKey(chunkServerState.chunkServerHostName)) {
             val currentRank = chunkIdToRanks[chunkServerState.chunkServerHostName]!!
             // removes queued server from tree map to reinsert it with its new ranking
-            val queuedServers = serverQueue[currentRank] ?: ArrayList()
-            queuedServers.remove(chunkServerState.chunkServerHostName)
-        }*/
-
-        if (serverQueue.containsKey(rank)) {
-            val updatedServers = serverQueue[rank]!!
-            updatedServers.add(chunkServerState.chunkServerHostName)
-        } else {
-            serverQueue[rank] = ArrayList(Collections.singleton(chunkServerState.chunkServerHostName))
+            if (serverQueue.containsKey(currentRank)) {
+                val queuedServers = serverQueue[currentRank]!!
+                queuedServers.remove(chunkServerState.chunkServerHostName)
+            }
         }
 
-        //chunkIdToRanks[chunkServerState.chunkServerHostName] = rank
+        if (serverQueue.containsKey(newRank)) {
+            val queuedServers = serverQueue[newRank]!!
+            queuedServers.add(chunkServerState.chunkServerHostName)
+        } else {
+            serverQueue[newRank] = ArrayList(Collections.singleton(chunkServerState.chunkServerHostName))
+        }
+
+        chunkIdToRanks[chunkServerState.chunkServerHostName] = newRank
         chunkServerStates[chunkServerState.chunkServerHostName] = chunkServerState
         return true
     }

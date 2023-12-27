@@ -6,13 +6,19 @@ import akka.actor.typed.javadsl.*
 import akka.actor.typed.pubsub.Topic
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.receptionist.ServiceKey
+import akka.cluster.ClusterEvent
+import akka.cluster.typed.Cluster
+import akka.cluster.typed.Subscribe
 import lgfs.api.MasterApi
 import lgfs.api.grpc.MasterServiceImpl
 import lgfs.gfs.ChunkServerState
 import lgfs.gfs.FileSystem
+import lgfs.gfs.allocator.AllocatorActor
+import lgfs.gfs.allocator.AllocatorProtocol
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
+import java.util.*
 
 
 class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<ClusterProtocol>) :
@@ -47,20 +53,26 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
         ClusterProtocol.ListingRes(it)
     }
     private val reqIds = HashMap<Long, Long>()
+    private val allocator = context.spawnAnonymous(AllocatorActor.create())
+    private val instanceId = UUID.randomUUID().toString()
 
     init {
-        val masterServiceRef = context.spawnAnonymous(MasterExecutor.create(fs))
+        val masterServiceRef = context.spawnAnonymous(MasterExecutor.create(allocator, fs))
         // sends heartbeat to cluster ?
         timers.startTimerWithFixedDelay(
             MASTER_UP_TIMER_KEY,
-            ClusterProtocol.MasterUP(Secrets.getSecrets().getHostName()),
+            ClusterProtocol.MasterUP(Secrets.getSecrets().getHostName(), instanceId),
             Duration.ZERO,
-            Duration.ofSeconds(1)
+            Duration.ofSeconds(5)
         )
         chunkUpTopic.tell(Topic.subscribe(context.self))
+        val clusterMemberEventAdapter = context.messageAdapter(ClusterEvent.MemberEvent::class.java) {
+            ClusterProtocol.ClusterMemberShipEvent(it)
+        }
+        val cluster = Cluster.get(context.system)
+        cluster.subscriptions().tell(Subscribe.create(clusterMemberEventAdapter, ClusterEvent.MemberEvent::class.java))
         val masterApi = MasterServiceImpl(MasterApi(masterServiceRef, context.system))
         masterApi.startServer()
-
     }
 
     override fun createReceive(): Receive<ClusterProtocol> {
@@ -95,12 +107,16 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
     }
 
     private fun onChunkUp(msg: ClusterProtocol.ChunkUp): Behavior<ClusterProtocol> {
-        logger.info("Received chunk up signal, retrieving actor ref at : {}", msg.serverHostName)
-        val serviceKey = ServiceKey.create(ClusterProtocol::class.java, msg.serverHostName)
-        serviceKeys[serviceKey] = msg
-        context.system.receptionist().tell(Receptionist.find(serviceKey, listingAdapter))
-        chunkInstancedIds[msg.serverHostName] = msg.instanceId
-        //statManager.tell(StateManagerActor.UpdateServerState(msg.chunkServerState))
+        if (!chunkRefs.containsKey(msg.serverHostName) || msg.instanceId != chunkInstancedIds[msg.serverHostName]) {
+            logger.info("Received chunk up signal from : {}, retrieving actor ref", msg.serverHostName)
+            val serviceKey = ServiceKey.create(ClusterProtocol::class.java, msg.serverHostName)
+            serviceKeys[serviceKey] = msg
+            context.system.receptionist().tell(Receptionist.find(serviceKey, listingAdapter))
+            chunkInstancedIds[msg.serverHostName] = msg.instanceId
+        } else {
+            logger.info("Received chunk up signal from: {}", msg.serverHostName)
+        }
+        allocator.tell(AllocatorProtocol.UpdateServerState(msg.chunkServerState))
         return Behaviors.same()
     }
 
@@ -108,6 +124,15 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
         logger.info("received chunk inventory from {}: {} chunk received", msg.serverHostName, msg.chunkIds.size)
         msg.chunkIds.forEach { chunkId ->
             fs.attachServerToChunk(msg.serverHostName, chunkId)
+        }
+        return Behaviors.same()
+    }
+
+    private fun onMemberEvent(msg: ClusterProtocol.ClusterMemberShipEvent): Behavior<ClusterProtocol> {
+        when (val memberEvent = msg.event) {
+            is ClusterEvent.MemberUp -> {
+                memberEvent.member().address().host
+            }
         }
         return Behaviors.same()
     }

@@ -48,7 +48,16 @@ class Client() {
                         .setFileSize(file.length().toInt())
                         .build()
                 )
-                logger.debug("created file at {} : {}", filePath, res.isSuccessful)
+                logger.info("created file at {} : {}", filePath, res.isSuccessful)
+                res.chunksList.forEach {
+                    logger.info(
+                        "#{} - chunk #{}, replica 1: {}, replicas count: {}",
+                        it.chunkIndex,
+                        it.chunkHandle,
+                        it.replicasList[0],
+                        it.replicasList.size
+                    )
+                }
             } catch (_: IllegalArgumentException) {
 
             } catch (_: NullPointerException) {
