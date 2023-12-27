@@ -18,7 +18,10 @@ class Allocator {
         const val CHUNK_SIZE = 64 * 1000 * 1000;
     }
 
-
+    /**
+     * Go over the queue and assign n replicas to a chunk
+     * //TODO probably need to abstract this method to an interface so we can allocation policy on the fly
+     */
     private fun dequeReplicas(): MutableList<String> {
         val replicas = mutableListOf<String>()
 
@@ -82,7 +85,7 @@ class Allocator {
             if (replicas.isEmpty()) {
                 return Pair(false, null);
             }
-            chunks.add(ChunkMetadata(atomicChunkId.getAndDecrement(), i.toLong(), dequeReplicas()))
+            chunks.add(ChunkMetadata(atomicChunkId.getAndIncrement(), i.toLong(), dequeReplicas()))
         }
         return Pair(true, chunks)
     }
