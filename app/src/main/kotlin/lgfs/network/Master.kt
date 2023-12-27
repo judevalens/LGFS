@@ -6,10 +6,10 @@ import akka.actor.typed.javadsl.*
 import akka.actor.typed.pubsub.Topic
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.receptionist.ServiceKey
+import lgfs.api.MasterApi
+import lgfs.api.grpc.MasterServiceImpl
 import lgfs.gfs.ChunkServerState
-import lgfs.gfs.FileMetadata
 import lgfs.gfs.FileSystem
-import lgfs.gfs.StateManager
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
@@ -39,7 +39,6 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
     private val serviceKeys = java.util.HashMap<ServiceKey<ClusterProtocol>, ClusterProtocol.ChunkUp>();
 
     private val fs = FileSystem()
-    private val statManager: ActorRef<StateManager.Command>
     private val chunkUpTopic: ActorRef<Topic.Command<ClusterProtocol>> =
         context.spawn(Topic.create(ClusterProtocol::class.java, "cluster-chunk-up"), "cluster-chunk-up")
     private val masterUpTopic: ActorRef<Topic.Command<ClusterProtocol>> =
@@ -50,7 +49,7 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
     private val reqIds = HashMap<Long, Long>()
 
     init {
-        statManager = context.spawn(StateManager.create(), "ChunkServerStatAggregator")
+        val masterServiceRef = context.spawnAnonymous(MasterExecutor.create(fs))
         // sends heartbeat to cluster ?
         timers.startTimerWithFixedDelay(
             MASTER_UP_TIMER_KEY,
@@ -58,8 +57,10 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
             Duration.ZERO,
             Duration.ofSeconds(1)
         )
-
         chunkUpTopic.tell(Topic.subscribe(context.self))
+        val masterApi = MasterServiceImpl(MasterApi(masterServiceRef, context.system))
+        masterApi.startServer()
+
     }
 
     override fun createReceive(): Receive<ClusterProtocol> {
@@ -67,9 +68,6 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
             .onMessage(ClusterProtocol.ChunkUp::class.java, this::onChunkUp)
             .onMessage(ClusterProtocol.ListingRes::class.java, this::onListing)
             .onMessage(ClusterProtocol.ChunkInventory::class.java, this::onChunkInventory).build()
-    }
-
-    private fun createFile(fileMetadata: FileMetadata) {
     }
 
     private fun onMasterUP(msg: ClusterProtocol.MasterUP): Behavior<ClusterProtocol> {
@@ -102,7 +100,7 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
         serviceKeys[serviceKey] = msg
         context.system.receptionist().tell(Receptionist.find(serviceKey, listingAdapter))
         chunkInstancedIds[msg.serverHostName] = msg.instanceId
-        statManager.tell(StateManager.UpdateServerState(msg.chunkServerState))
+        //statManager.tell(StateManagerActor.UpdateServerState(msg.chunkServerState))
         return Behaviors.same()
     }
 

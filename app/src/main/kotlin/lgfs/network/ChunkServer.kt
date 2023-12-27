@@ -7,6 +7,8 @@ import akka.actor.typed.pubsub.Topic
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.receptionist.ServiceKey
 import akka.cluster.typed.Cluster
+import lgfs.api.ChunkAPI
+import lgfs.api.grpc.ChunkServiceImplementation
 import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.ChunkServerState
 import org.slf4j.Logger
@@ -36,6 +38,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
     private val masterUpMsg: Optional<ClusterProtocol.MasterUP> = Optional.empty()
     private val serviceKeys = HashMap<ServiceKey<ClusterProtocol>, ClusterProtocol.ChunkUp>();
     val chunkService = context.spawnAnonymous(ChunkService.create())
+
     init {
         masterUpTopic.tell(Topic.subscribe(context.self))
         chunkUpTopic.tell(Topic.subscribe(context.self))
@@ -48,6 +51,9 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
             Duration.ofSeconds(1)
         )
 
+        val chunkApi = ChunkAPI(chunkService, context.system)
+        val chunkGrpcService = ChunkServiceImplementation(chunkApi)
+        chunkGrpcService.startServer()
     }
 
     companion object {

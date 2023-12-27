@@ -9,13 +9,7 @@ import akka.cluster.Member
 import akka.cluster.typed.Cluster
 import com.typesafe.config.Config
 import com.typesafe.config.ConfigFactory
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
-import lgfs.api.GfsApi
-import lgfs.api.grpc.FileService
-import lgfs.api.grpc.GFSServer
-import lgfs.client.Client
-import lgfs.gfs.StateManager
 import java.io.FileInputStream
 import java.nio.file.Files
 import java.nio.file.Paths
@@ -40,8 +34,7 @@ class Manager(context: ActorContext<Command>) :
         private set
     lateinit var masterExecutor: ActorRef<FileProtocol>
         private set
-    lateinit var statManager: ActorRef<StateManager.Command>
-        private set
+
     private val fileSystem: lgfs.gfs.FileSystem = lgfs.gfs.FileSystem()
 
     class Handshake(listing: Receptionist.Listing) {
@@ -108,10 +101,9 @@ class Manager(context: ActorContext<Command>) :
             .onMessage(
                 LaunchMaster::class.java
             ) { msg ->
-                statManager = context.spawn(StateManager.create(), "stat_manager")
                 masterActor = context.spawn(Master.create(), msg.name)
                 masterExecutor =
-                    context.spawn(MasterExecutor.create(statManager, fileSystem), "master_executor_service")
+                    context.spawn(MasterExecutor.create(fileSystem), "master_executor_service")
                 runBlocking {
                     launchClientAPI()
                 }
@@ -125,7 +117,7 @@ class Manager(context: ActorContext<Command>) :
     }
 
     private suspend fun launchClientAPI() {
-        val masterApi: GfsApi = GfsApi(masterExecutor, system)
+       /* val masterApi: GfsApi = GfsApi(masterExecutor, system)
         val client = Client(masterApi)
         delay(2000)
         client.createFile(test_path)
@@ -133,7 +125,7 @@ class Manager(context: ActorContext<Command>) :
         // launch grpc server
         val fileService = FileService(masterApi)
         val server = GFSServer(fileService)
-        server.startServer()
+        server.startServer()*/
     }
 
     fun isMasterActorUp(): Boolean {

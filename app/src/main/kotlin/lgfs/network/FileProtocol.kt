@@ -11,7 +11,7 @@ interface FileProtocol {
         val replyTo: ActorRef<FileProtocol>
     ) : FileProtocol
 
-    class CreateFileRes(val reqId: String, val successful: Boolean, val chunks: List<ChunkMetadata>) :
+    class CreateFileRes(val reqId: String, val successful: Boolean, val chunks: List<ChunkMetadata>?) :
         FileProtocol
 
     class ChunkWriteReq(val reqId: String) : FileProtocol

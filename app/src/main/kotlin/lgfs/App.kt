@@ -3,16 +3,25 @@
  */
 package lgfs
 
+import ch.qos.logback.classic.Level
+import ch.qos.logback.classic.Logger
+import ch.qos.logback.classic.LoggerContext
 import kotlinx.coroutines.runBlocking
 import lgfs.network.Manager
-import java.nio.ByteBuffer
-import java.nio.file.Paths
-import java.util.HexFormat
+import org.slf4j.LoggerFactory
 
 
 fun main() {
-
-    runBlocking {
-        val manager = Manager.launch()
+    val loggerContext: LoggerContext = LoggerFactory.getILoggerFactory() as LoggerContext
+    val nettyLogger: Logger = loggerContext.getLogger("io.grpc.netty")
+    nettyLogger.setLevel(Level.INFO)
+    val rootLogger = loggerContext.getLogger(Logger.ROOT_LOGGER_NAME)
+    rootLogger.setLevel(Level.INFO)
+    if (System.getenv()["NODE_TYPE"].equals("server")) {
+        runBlocking {
+            val manager = Manager.launch()
+        }
+    }else {
+        val client = lgfs.client.Client()
     }
 }

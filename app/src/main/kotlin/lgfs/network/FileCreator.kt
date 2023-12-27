@@ -8,10 +8,11 @@ import akka.actor.typed.javadsl.StashBuffer
 import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.FileMetadata
 import lgfs.gfs.FileSystem
-import lgfs.gfs.StateManager
+import lgfs.gfs.allocator.AllocatorProtocol
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
+import java.util.ArrayList
 
 class FileCreator(
     private val reqId: String,
@@ -19,16 +20,16 @@ class FileCreator(
     private val context: ActorContext<Command>,
     private val stashBuffer: StashBuffer<Command>,
     private val fs: FileSystem,
-    private val statManager: ActorRef<StateManager.Command>,
+    private val allocator: ActorRef<AllocatorProtocol>,
     private val replyTo: ActorRef<FileProtocol>
 ) {
     interface Command
     private class CreateFile(
-        val chunks: List<ChunkMetadata>
+        val chunks: List<ChunkMetadata>?
     ) : Command
 
     private class ChunkAllocationReq : Command
-    private class ChunkAllocationRes(val isSuccessful: Boolean, val chunks: List<ChunkMetadata>) : Command
+    private class ChunkAllocationRes(val isSuccessful: Boolean, val chunks: List<ChunkMetadata>?) : Command
     private class Exit : Command
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
@@ -38,27 +39,34 @@ class FileCreator(
             reqId: String,
             fileMetadata: FileMetadata,
             fs: FileSystem,
-            statManager: ActorRef<StateManager.Command>,
+            allocator: ActorRef<AllocatorProtocol>,
             replyTo: ActorRef<FileProtocol>
         ): Behavior<Command> {
             return Behaviors.withStash(1) { stash ->
                 Behaviors.setup {
-                    FileCreator(reqId, fileMetadata, it, stash, fs, statManager, replyTo).start()
+                    FileCreator(reqId, fileMetadata, it, stash, fs, allocator, replyTo).start()
                 }
             }
         }
     }
 
     /**
-     * Ask the [StateManager] where to put this file's chunk
+     * Ask the [StateManagerActor] where to put this file's chunk
      */
     private fun reqReplicas(): Behavior<Command> {
-        return Behaviors.receive(Command::class.java).onMessage(ChunkAllocationReq::class.java) {
-            context.ask(StateManager.ChunkAllocationRes::class.java, statManager, Duration.ofMinutes(1), {
-                StateManager.ChunkAllocationReq(fileMetadata, it)
-            }, { res, _ ->
-                res?.let {
-                    return@ask ChunkAllocationRes(it.isSuccessful, it.replicationLocations)
+        return Behaviors.receive(Command::class.java).onMessage(ChunkAllocationReq::class.java) { _ ->
+            context.ask(AllocatorProtocol.ChunkAllocationRes::class.java, allocator, Duration.ofMinutes(1), {
+                logger.info(
+                    "Requesting replicas location for new file! file path: {}, req id: $reqId",
+                    fileMetadata.path
+                )
+                AllocatorProtocol.ChunkAllocationReq(fileMetadata, it)
+            }, { res, err ->
+                if (res != null) {
+                    return@ask ChunkAllocationRes(res.isSuccessful, res.replicationLocations)
+                } else {
+                    logger.error("{} - Failed to allocate chunk \n {}", reqId, err.message)
+                    return@ask ChunkAllocationRes(false,null)
                 }
             })
             Behaviors.same()
@@ -66,7 +74,13 @@ class FileCreator(
     }
 
     private fun start(): Behavior<Command> {
-        logger.info("Requesting replicas location for new file! file path: {}, req id: $reqId", fileMetadata.path)
+        logger.info(
+            "{} - Creating file at path : {}, size: {}, isDir: {}",
+            reqId,
+            fileMetadata.path,
+            fileMetadata.size,
+            fileMetadata.isDir
+        )
         stashBuffer.stash(ChunkAllocationReq())
         return stashBuffer.unstashAll(reqReplicas())
     }
@@ -81,14 +95,20 @@ class FileCreator(
 
     private fun onCreateFile(): Behavior<Command> {
         return Behaviors.receive(Command::class.java)
-            .onMessage(CreateFile::class.java) { msg2 ->
-                logger.debug("adding file: ${fileMetadata.path} to directory tree, req id: $reqId")
+            .onMessage(CreateFile::class.java) { msg ->
+                logger.info("{} - creating file : {} in FS", reqId, fileMetadata.path)
+                if (msg.chunks?.isEmpty() == true) {
+                    logger.info("{} - failed to allocate chunks for file : {}", reqId, fileMetadata.path)
+                    replyTo.tell(FileProtocol.CreateFileRes(reqId, false, emptyList()))
+                    return@onMessage Behaviors.stopped()
+                }
                 val fileCreated = fs.addFile(fileMetadata)
                 if (fileCreated) {
-                    replyTo.tell(FileProtocol.CreateFileRes(reqId, true, msg2.chunks))
+                    logger.info("{} - Created file at: {}", reqId, fileMetadata.path)
+                    replyTo.tell(FileProtocol.CreateFileRes(reqId, true, msg.chunks))
                 } else {
-                    logger.info("Failed to add file path: ${fileMetadata.path} to directory tree, req id: $reqId")
-                    replyTo.tell(FileProtocol.CreateFileRes(reqId, false, msg2.chunks))
+                    logger.info("{} - Failed to add file path: {} to directory tree", reqId, fileMetadata.path)
+                    replyTo.tell(FileProtocol.CreateFileRes(reqId, false, msg.chunks))
                 }
                 Behaviors.stopped()
             }.build()

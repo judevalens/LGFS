@@ -51,7 +51,9 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     testImplementation(kotlin("test"))
     testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.0")
+    testImplementation("org.junit.jupiter:junit-jupiter:5.8.1")
     testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.8.1")
+    testImplementation("org.mockito.kotlin:mockito-kotlin:3.2.0")
     //protobuf(project(":protos"))
 
     api("io.grpc:grpc-stub:${Versions.GRPC_VERSION}")
@@ -60,7 +62,7 @@ dependencies {
     api("com.google.protobuf:protobuf-kotlin:${Versions.PROTOBUF_VERSION}")
     api("io.grpc:grpc-kotlin-stub:${Versions.GRPC_KOTLIN_VERSION}")
     implementation("io.grpc:grpc-netty-shaded:1.58.0")
-
+    implementation("commons-cli:commons-cli:1.6.0")
 }
 
 testing {
@@ -87,6 +89,7 @@ sourceSets {
             resources {
                 srcDirs("src/main/resources")
             }
+
         }
     }
 }
@@ -134,12 +137,10 @@ java {
         languageVersion.set(JavaLanguageVersion.of(19))
     }
 
-
 }
-
-
 
 application {
     // Define the main class for the application.
     mainClass.set("lgfs.AppKt")
+    applicationDefaultJvmArgs = listOf("-Djava.util.logging.config.file=/home/jude/Documents/LGFS/app/logging.properties")
 }

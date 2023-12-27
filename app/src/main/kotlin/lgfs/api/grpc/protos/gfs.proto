@@ -2,12 +2,12 @@ syntax = "proto3";
 
 
 
-service GFS {
+service MasterService {
   rpc createFile(CreateFileReq) returns (CreateFileRes);
 }
 
 service ChunkService {
-    rpc
+  rpc addMutations(Mutations) returns (Res);
 }
 
 message CreateFileReq {
@@ -16,7 +16,7 @@ message CreateFileReq {
 }
 
 message CreateFileRes {
-  int32 status = 1;
+  bool isSuccessful = 1;
   repeated Chunk chunks = 2;
 }
 
@@ -31,9 +31,17 @@ enum MutationType {
   Write = 1;
 }
 
-message Mutations {
+message Mutation {
   int64 chunkHandle = 1;
   int64 chunkIndex = 2;
   int64 serial = 3;
   MutationType type = 4;
+}
+
+message Mutations {
+  Mutation mutations = 1;
+}
+message Res {
+  string status = 1;
+  string code = 2;
 }

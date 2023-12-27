@@ -7,23 +7,22 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 import lgfs.gfs.FileSystem
-import lgfs.gfs.StateManager
+import lgfs.gfs.allocator.AllocatorActor
+import lgfs.gfs.allocator.AllocatorProtocol
 import org.slf4j.LoggerFactory
 
 class MasterExecutor(
     private val context: ActorContext<FileProtocol>,
-    private val statManager: ActorRef<StateManager.Command>,
     private val fs: FileSystem,
 ) : AbstractBehavior<FileProtocol>(context) {
     private val logger: org.slf4j.Logger = LoggerFactory.getLogger(this::class.java)
-
+    private val allocator = context.spawnAnonymous(AllocatorActor.create())
     companion object {
         fun create(
-            statManager: ActorRef<StateManager.Command>,
             fs: FileSystem
         ): Behavior<FileProtocol> {
             return Behaviors.setup {
-                MasterExecutor(it, statManager, fs)
+                MasterExecutor(it, fs)
             }
         }
     }
@@ -40,7 +39,7 @@ class MasterExecutor(
     private fun onCreateFile(msg: FileProtocol.CreateFileReq): Behavior<FileProtocol> {
         logger.info("spawning actor to create file, req id: {}", msg.reqId)
         fileCreators[msg.reqId] =
-            context.spawn(FileCreator.create(msg.reqId, msg.fileMetadata, fs, statManager, msg.replyTo), "fs")
+            context.spawn(FileCreator.create(msg.reqId, msg.fileMetadata, fs, allocator, msg.replyTo), "fs")
 
         return Behaviors.same()
     }

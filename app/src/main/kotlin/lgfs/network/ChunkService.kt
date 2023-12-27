@@ -20,7 +20,7 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
     private val mutationData = HashMap<String, ChunkData>()
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
-    class SendIncomingConnection(val socket: Socket) : FileProtocol
+    class HandleIncomingTCPConnection(val socket: Socket) : FileProtocol
     class IncomingConnection(val socket: Socket, val replyTo: ActorRef<FileProtocol>) : FileProtocol
     class PayloadData(val mutationId: ByteArray, val payload: ByteArray) : FileProtocol
     class LeaseGrant(val chunkHandle: Long, val givenAt: Long, val duration: Long) : FileProtocol
@@ -43,7 +43,7 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
                             "..........."
                 )
                 val incomingConnection = server.accept();
-                context.self.tell(SendIncomingConnection(incomingConnection))
+                context.self.tell(HandleIncomingTCPConnection(incomingConnection))
             }
         }
         tcpThread.start()
@@ -54,11 +54,10 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
             .onMessage(FileProtocol.Mutations::class.java, this::onMutations)
             .onMessage(FileProtocol.CommitMutation::class.java, this::onCommitMutation)
             .onMessage(LeaseGrant::class.java, this::onLeaseGrant)
-            .onMessage(SendIncomingConnection::class.java, this::onSendIncomingConnection)
+            .onMessage(HandleIncomingTCPConnection::class.java, this::onHandleIncomingTCPConnection)
             .onMessage(PayloadData::class.java, this::onPayloadData)
             .build()
     }
-
     private fun onMutations(msg: FileProtocol.Mutations): Behavior<FileProtocol> {
         val mutationHolder =
             msg.mutations.forEach { mutation ->
@@ -71,33 +70,24 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
             }
         return Behaviors.same()
     }
-
     private fun isPrimary(hostname: String): Boolean {
         return TODO()
     }
-
     private fun onCommitMutation(msg: FileProtocol.CommitMutation): Behavior<FileProtocol> {
         if (mutations.containsKey(msg.chunkHandle)) {
             mutations[msg.chunkHandle]!!.commitMutation(msg.clientId, TODO())
         }
         return Behaviors.same()
     }
-
-    private fun onChunkWriteReq(msg: FileProtocol.ChunkWriteReq): Behavior<FileProtocol> {
-        return Behaviors.same()
-    }
-
-    private fun onSendIncomingConnection(msg: SendIncomingConnection): Behavior<FileProtocol> {
+    private fun onHandleIncomingTCPConnection(msg: HandleIncomingTCPConnection): Behavior<FileProtocol> {
         context.spawnAnonymous(TCPConnectionHandler.create(msg.socket, context.self))
         return Behaviors.same()
     }
-
     private fun onPayloadData(msg: PayloadData): Behavior<FileProtocol> {
         val mutationId = String(msg.mutationId)
         mutationData[mutationId] = ChunkData(0, "", msg.payload)
         return Behaviors.same()
     }
-
     private fun onLeaseGrant(msg: LeaseGrant): Behavior<FileProtocol> {
         val lease = Lease(msg.chunkHandle, msg.givenAt)
         leases[msg.chunkHandle] = lease
