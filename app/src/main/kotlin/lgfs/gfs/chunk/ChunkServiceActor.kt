@@ -1,35 +1,27 @@
-package lgfs.network
+package lgfs.gfs.chunk
 
-import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
-import lgfs.gfs.ChunkData
-import lgfs.gfs.Lease
-import lgfs.gfs.MutationHolder
+import lgfs.gfs.FileProtocol
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.net.ServerSocket
 import java.net.Socket
 
-class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileProtocol>(context) {
-    private val leases = HashMap<Long, Lease>()
-    private val mutations = HashMap<Long, MutationHolder>()
-    private val mutationData = HashMap<String, ChunkData>()
+class ChunkServiceActor(context: ActorContext<FileProtocol>) : AbstractBehavior<FileProtocol>(context) {
+    private val chunkService = ChunkService()
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
-
     class HandleIncomingTCPConnection(val socket: Socket) : FileProtocol
-    class IncomingConnection(val socket: Socket, val replyTo: ActorRef<FileProtocol>) : FileProtocol
     class PayloadData(val mutationId: ByteArray, val payload: ByteArray) : FileProtocol
     class LeaseGrant(val chunkHandle: Long, val givenAt: Long, val duration: Long) : FileProtocol
-
 
     companion object {
         fun create(): Behavior<FileProtocol> {
             return Behaviors.setup {
-                ChunkService(it);
+                ChunkServiceActor(it);
             }
         }
     }
@@ -58,39 +50,29 @@ class ChunkService(context: ActorContext<FileProtocol>) : AbstractBehavior<FileP
             .onMessage(PayloadData::class.java, this::onPayloadData)
             .build()
     }
-    private fun onMutations(msg: FileProtocol.Mutations): Behavior<FileProtocol> {
-        val mutationHolder =
-            msg.mutations.forEach { mutation ->
-                var mutationHolder = MutationHolder(mutation.chunkHandle)
-                if (mutations.containsKey(mutation.chunkHandle)) {
-                    mutationHolder = mutations[mutation.chunkHandle]!!
-                }
-                mutationHolder.addMutation(mutation, isPrimary(mutation.primary))
 
-            }
+    private fun onMutations(msg: FileProtocol.Mutations): Behavior<FileProtocol> {
+        chunkService.addMutations(msg.mutations)
         return Behaviors.same()
     }
-    private fun isPrimary(hostname: String): Boolean {
-        return TODO()
-    }
+
     private fun onCommitMutation(msg: FileProtocol.CommitMutation): Behavior<FileProtocol> {
-        if (mutations.containsKey(msg.chunkHandle)) {
-            mutations[msg.chunkHandle]!!.commitMutation(msg.clientId, TODO())
-        }
+        chunkService.commitMutation(msg.clientId, msg.chunkHandle, msg.replicas)
         return Behaviors.same()
     }
+
     private fun onHandleIncomingTCPConnection(msg: HandleIncomingTCPConnection): Behavior<FileProtocol> {
         context.spawnAnonymous(TCPConnectionHandler.create(msg.socket, context.self))
         return Behaviors.same()
     }
+
     private fun onPayloadData(msg: PayloadData): Behavior<FileProtocol> {
-        val mutationId = String(msg.mutationId)
-        mutationData[mutationId] = ChunkData(0, "", msg.payload)
+        chunkService.handlePayloadData(String(msg.mutationId), msg.payload)
         return Behaviors.same()
     }
+
     private fun onLeaseGrant(msg: LeaseGrant): Behavior<FileProtocol> {
-        val lease = Lease(msg.chunkHandle, msg.givenAt)
-        leases[msg.chunkHandle] = lease
+        chunkService.handleLeaseGrant(msg.chunkHandle, msg.givenAt, msg.duration)
         return Behaviors.same()
     }
 }

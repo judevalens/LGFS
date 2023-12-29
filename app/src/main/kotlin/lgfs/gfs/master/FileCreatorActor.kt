@@ -1,4 +1,4 @@
-package lgfs.network
+package lgfs.gfs.master
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
@@ -7,14 +7,14 @@ import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.StashBuffer
 import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.FileMetadata
+import lgfs.gfs.FileProtocol
 import lgfs.gfs.FileSystem
 import lgfs.gfs.allocator.AllocatorProtocol
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
-import java.util.ArrayList
 
-class FileCreator(
+class FileCreatorActor(
     private val reqId: String,
     private val fileMetadata: FileMetadata,
     private val context: ActorContext<Command>,
@@ -44,16 +44,16 @@ class FileCreator(
         ): Behavior<Command> {
             return Behaviors.withStash(1) { stash ->
                 Behaviors.setup {
-                    FileCreator(reqId, fileMetadata, it, stash, fs, allocator, replyTo).start()
+                    FileCreatorActor(reqId, fileMetadata, it, stash, fs, allocator, replyTo).start()
                 }
             }
         }
     }
 
     /**
-     * Ask the [StateManagerActor] where to put this file's chunk
+     * Ask the [Allocator] where to put this file's chunk
      */
-    private fun reqReplicas(): Behavior<Command> {
+    private fun createChunks(): Behavior<Command> {
         return Behaviors.receive(Command::class.java).onMessage(ChunkAllocationReq::class.java) { _ ->
             context.ask(AllocatorProtocol.ChunkAllocationRes::class.java, allocator, Duration.ofMinutes(1), {
                 logger.info(
@@ -66,7 +66,7 @@ class FileCreator(
                     return@ask ChunkAllocationRes(res.isSuccessful, res.replicationLocations)
                 } else {
                     logger.error("{} - Failed to allocate chunk \n {}", reqId, err.message)
-                    return@ask ChunkAllocationRes(false,null)
+                    return@ask ChunkAllocationRes(false, null)
                 }
             })
             Behaviors.same()
@@ -82,7 +82,7 @@ class FileCreator(
             fileMetadata.isDir
         )
         stashBuffer.stash(ChunkAllocationReq())
-        return stashBuffer.unstashAll(reqReplicas())
+        return stashBuffer.unstashAll(createChunks())
     }
 
     /**
@@ -104,8 +104,7 @@ class FileCreator(
                 }
                 val fileCreated = fs.addFile(fileMetadata)
                 if (fileCreated) {
-                    logger.info("{} - Created file at: {}, nReplicas: {}", reqId, fileMetadata.path,
-                        msg.chunks?.get(0)?.replicas?.size)
+                    logger.info("{} - Created file at: {}", reqId, fileMetadata.path)
                     replyTo.tell(FileProtocol.CreateFileRes(reqId, true, msg.chunks))
                 } else {
                     logger.info("{} - Failed to add file path: {} to directory tree", reqId, fileMetadata.path)

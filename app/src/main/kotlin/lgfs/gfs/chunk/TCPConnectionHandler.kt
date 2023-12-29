@@ -1,9 +1,10 @@
-package lgfs.network
+package lgfs.gfs.chunk
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
+import lgfs.gfs.FileProtocol
 import java.net.Socket
 import java.nio.ByteBuffer
 
@@ -28,7 +29,7 @@ class TCPConnectionHandler(
         val payloadLen = ByteBuffer.allocate(4).put(payloadLenByte).getInt()
         val payloadId = socket.getInputStream().readNBytes(16)
         val payload = socket.getInputStream().readNBytes(payloadLen)
-        replyTo.tell(ChunkService.PayloadData(payloadId, payload))
+        replyTo.tell(ChunkServiceActor.PayloadData(payloadId, payload))
         return Behaviors.stopped()
     }
 

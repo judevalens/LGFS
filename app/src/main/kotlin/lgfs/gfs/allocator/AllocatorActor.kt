@@ -5,9 +5,12 @@ import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
+import lgfs.gfs.FileProtocol
+import org.slf4j.LoggerFactory
 
 class AllocatorActor(context: ActorContext<AllocatorProtocol>) : AbstractBehavior<AllocatorProtocol>(context) {
     private val allocator = Allocator()
+    private val logger: org.slf4j.Logger = LoggerFactory.getLogger(this::class.java)
 
     companion object {
         fun create(): Behavior<AllocatorProtocol> {
@@ -21,12 +24,13 @@ class AllocatorActor(context: ActorContext<AllocatorProtocol>) : AbstractBehavio
         return newReceiveBuilder()
             .onMessage(AllocatorProtocol.ChunkAllocationReq::class.java, this::onAllocateChunks)
             .onMessage(AllocatorProtocol.UpdateServerState::class.java, this::onUpdateState)
+            .onMessage(AllocatorProtocol.LeaseGrantReq::class.java, this::onLeaseGrantReq)
             .build()
     }
 
     private fun onAllocateChunks(msg: AllocatorProtocol.ChunkAllocationReq): Behavior<AllocatorProtocol> {
         val res = allocator.allocateChunks(msg.fileMetadata)
-        msg.replyTo.tell(AllocatorProtocol.ChunkAllocationRes(res.first,res.second))
+        msg.replyTo.tell(AllocatorProtocol.ChunkAllocationRes(res.first, res.second))
         return Behaviors.same()
     }
 
@@ -35,6 +39,13 @@ class AllocatorActor(context: ActorContext<AllocatorProtocol>) : AbstractBehavio
      */
     private fun onUpdateState(msg: AllocatorProtocol.UpdateServerState): Behavior<AllocatorProtocol> {
         allocator.updateState(msg.state)
+        return Behaviors.same()
+    }
+
+    private fun onLeaseGrantReq(msg: AllocatorProtocol.LeaseGrantReq): Behavior<AllocatorProtocol> {
+        logger.info("{} - Processing lease grant request",msg.reqId)
+        val leases = allocator.grantLease(msg.chunkHandles)
+        msg.replyTo.tell(FileProtocol.LeaseGrantRes(leases))
         return Behaviors.same()
     }
 }

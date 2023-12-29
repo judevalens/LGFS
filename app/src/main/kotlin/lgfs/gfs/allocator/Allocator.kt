@@ -3,6 +3,8 @@ package lgfs.gfs.allocator
 import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.ChunkServerState
 import lgfs.gfs.FileMetadata
+import lgfs.gfs.Lease
+import java.time.Duration
 import java.util.*
 import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.ceil
@@ -14,6 +16,13 @@ class Allocator {
     private val numReplica = 3
     private val atomicChunkId = AtomicLong()
 
+    private val leases = HashMap<Long, Lease>()
+    private val chunkInventory = HashMap<Long, MutableList<String>>()
+
+    class LeaseHolder {
+        val leases = HashMap<Long, MutableSet<String>>()
+    }
+
     companion object {
         const val CHUNK_SIZE = 64 * 1000 * 1000;
     }
@@ -22,7 +31,7 @@ class Allocator {
      * Go over the queue and assign n replicas to a chunk
      * //TODO probably need to abstract this method to an interface so we can allocation policy on the fly
      */
-    private fun dequeReplicas(): MutableList<String> {
+    private fun assignChunkToServers(): MutableList<String> {
         val replicas = mutableListOf<String>()
 
         for (i in 0..numReplica) {
@@ -81,12 +90,56 @@ class Allocator {
         val numChunks = ceil(fileMetadata.size.toDouble() / CHUNK_SIZE).toInt()
         val chunks = ArrayList<ChunkMetadata>()
         for (i in 0..<numChunks) {
-            val replicas = dequeReplicas()
+            /*
+            this is probably not needed
+            val replicas = assignChunkToServers()
             if (replicas.isEmpty()) {
                 return Pair(false, null);
-            }
-            chunks.add(ChunkMetadata(atomicChunkId.getAndIncrement(), i.toLong(), dequeReplicas()))
+            }*/
+            chunks.add(ChunkMetadata(atomicChunkId.getAndIncrement(), i))
         }
         return Pair(true, chunks)
+    }
+
+    fun addChunkToInventory(chunkHandle: Long, serverHostname: String) {
+        if (chunkInventory.containsKey(chunkHandle)) {
+            chunkInventory[chunkHandle]?.add(serverHostname)
+        } else {
+            chunkInventory[chunkHandle] = ArrayList(Collections.singleton(serverHostname))
+        }
+    }
+
+    /**
+     * Grants a lease to chunk servers for a given chunk identified by its handle.
+     * Leases are used to mutate chunks (create or update an existing chunk)
+     */
+    fun grantLease(chunkHandles: List<Long>): ArrayList<Lease> {
+        val grantedLeases = ArrayList<Lease>()
+        chunkHandles.forEach {
+            if (leases.containsKey(it) && isLeaseValid(leases[it]!!)) {
+                grantedLeases.add(leases[it]!!)
+            } else {
+                /**
+                 * if this chunk is already attributed to a set chunkServers then we'll just grant a new lease to one of the servers
+                 * otherwise we assign this chunk to a set of severs
+                 */
+                if (chunkInventory.containsKey(it)) {
+                    val replicas = chunkInventory[it]!!
+                    val primary = replicas.removeAt(0)
+                    grantedLeases.add(Lease(it, Duration.ofMinutes(1).toMinutes(), primary, replicas))
+                }else {
+                    val replicas = assignChunkToServers()
+                    if (replicas.isNotEmpty()) {
+                        val primary = replicas.removeAt(0)
+                        grantedLeases.add(Lease(it, Duration.ofMinutes(1).toMinutes(), primary, replicas))
+                    }
+                }
+            }
+        }
+        return grantedLeases
+    }
+
+    private fun isLeaseValid(lease: Lease): Boolean {
+        return true //TODO implement this
     }
 }

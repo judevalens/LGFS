@@ -51,11 +51,9 @@ class Client() {
                 logger.info("created file at {} : {}", filePath, res.isSuccessful)
                 res.chunksList.forEach {
                     logger.info(
-                        "#{} - chunk #{}, replica 1: {}, replicas count: {}",
+                        "#{} - chunk #{}",
                         it.chunkIndex,
                         it.chunkHandle,
-                        it.replicasList[0],
-                        it.replicasList.size
                     )
                 }
             } catch (_: IllegalArgumentException) {

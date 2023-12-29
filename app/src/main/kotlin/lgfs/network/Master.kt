@@ -15,6 +15,7 @@ import lgfs.gfs.ChunkServerState
 import lgfs.gfs.FileSystem
 import lgfs.gfs.allocator.AllocatorActor
 import lgfs.gfs.allocator.AllocatorProtocol
+import lgfs.gfs.master.MasterServiceActor
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
@@ -57,7 +58,7 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
     private val instanceId = UUID.randomUUID().toString()
 
     init {
-        val masterServiceRef = context.spawnAnonymous(MasterExecutor.create(allocator, fs))
+        val masterServiceRef = context.spawnAnonymous(MasterServiceActor.create(allocator, fs))
         // sends heartbeat to cluster ?
         timers.startTimerWithFixedDelay(
             MASTER_UP_TIMER_KEY,

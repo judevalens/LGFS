@@ -4,10 +4,11 @@ syntax = "proto3";
 
 service MasterService {
   rpc createFile(CreateFileReq) returns (CreateFileRes);
+  rpc getLease(LeaseGrantReq) returns (LeaseGrantRes);
 }
 
 service ChunkService {
-  rpc addMutations(Mutations) returns (Res);
+  rpc addMutations(Mutations) returns (Status);
 }
 
 message CreateFileReq {
@@ -18,30 +19,45 @@ message CreateFileReq {
 message CreateFileRes {
   bool isSuccessful = 1;
   repeated Chunk chunks = 2;
+  Status resStatus = 3;
+}
+
+message Lease {
+  int64 chunkHandle = 1;
+  int64 grantedAt = 2;
+  int64 duration = 3;
+  string primary = 4;
+  repeated string replicas = 5;
+}
+
+message LeaseGrantReq{
+  repeated int64 chunkHandles = 1;
+}
+
+message LeaseGrantRes {
+  repeated Lease leases = 1;
+  Status resStatus = 2;
 }
 
 message Chunk {
   int64 chunkHandle = 1;
-  int64 chunkIndex = 2;
-  repeated string replicas = 3;
+  int32 chunkIndex = 2;
 }
 
 enum MutationType {
   Append = 0;
   Write = 1;
 }
-
 message Mutation {
   int64 chunkHandle = 1;
   int64 chunkIndex = 2;
   int64 serial = 3;
   MutationType type = 4;
 }
-
 message Mutations {
   Mutation mutations = 1;
 }
-message Res {
+message Status {
   string status = 1;
-  string code = 2;
+  int32 code = 2;
 }

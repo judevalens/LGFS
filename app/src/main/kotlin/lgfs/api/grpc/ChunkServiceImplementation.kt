@@ -14,7 +14,7 @@ class ChunkServiceImplementation(val chunkAPI: ChunkAPI) : ChunkServiceGrpcKt.Ch
         server.start()
     }
 
-    override suspend fun addMutations(request: Gfs.Mutations): Gfs.Res {
+    override suspend fun addMutations(request: Gfs.Mutations): Gfs.Status {
         return super.addMutations(request)
     }
 }

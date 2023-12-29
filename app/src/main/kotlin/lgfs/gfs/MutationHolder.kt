@@ -1,6 +1,5 @@
 package lgfs.gfs
 
-import lgfs.network.FileProtocol
 import java.nio.ByteBuffer
 import java.util.*
 

@@ -3,7 +3,7 @@ package lgfs.api
 import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.javadsl.AskPattern
-import lgfs.network.FileProtocol
+import lgfs.gfs.FileProtocol
 import java.time.Duration
 import java.util.concurrent.CompletionStage
 

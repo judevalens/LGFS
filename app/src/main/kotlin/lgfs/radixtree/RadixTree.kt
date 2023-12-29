@@ -1,15 +1,19 @@
-package utils.radixtree
+package lgfs.radixtree
 
+import utils.radixtree.Key
+import utils.radixtree.Node
 import java.util.*
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.TimeUnit
-import java.util.concurrent.locks.Lock
-import java.util.concurrent.locks.ReentrantReadWriteLock.WriteLock
 
 class RadixTree<K, V>(private var key: Key<K>, private var value: V, private val radix: Int) {
     private var root: Node<K, V> = Node(key, value)
-    fun add(key: Key<K>, value: V): Boolean {
+    fun add(key: Key<K>, value: V, update: Boolean): Boolean {
         println("adding: ${key.toString()}")
+        if (!update) {
+            if (find(key) != null) {
+                println("found value ${find(key)}")
+                return false
+            }
+        }
         val nodesStack: Queue<Node<K, V>> = ArrayDeque(Collections.singleton(root))
         val lockStack = Stack<Node<K, V>>();
         var i = 0
@@ -85,7 +89,11 @@ class RadixTree<K, V>(private var key: Key<K>, private var value: V, private val
             }
         }
 
-        return false
+        return true
+    }
+
+    fun add(key: Key<K>, value: V): Boolean {
+        return add(key, value, false)
     }
 
     fun find(key: Key<K>): V? {
@@ -99,7 +107,8 @@ class RadixTree<K, V>(private var key: Key<K>, private var value: V, private val
             val j = keyCompare(currentNode.key.getByteArray(), key.getByteArray().sliceArray(i..<key.length()))
             i += j
             if (j > 0) {
-                if (i == key.length()) {
+                // if we reach the end of the key and the current's node key is not longer the wanted key, we must have found the correct node
+                if (i == key.length() && currentNode.key.length() <= i) {
                     return currentNode.value;
                 }
                 nodesStack.clear();

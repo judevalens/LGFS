@@ -1,6 +1,5 @@
 package lgfs.gfs
 
-import lgfs.network.FileProtocol
 import lgfs.network.Secrets
 import java.nio.file.Paths
 import java.util.*

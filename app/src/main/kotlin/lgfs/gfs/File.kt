@@ -8,9 +8,4 @@ class File(var metadata: FileMetadata) {
             return FileMetadata(path, false, size)
         }
     }
-
-    fun attachServerToChunk(chunkHandle: Long, serverHostname: String): Boolean {
-        chunks[chunkHandle]!!.replicas.add(serverHostname)
-        return false
-    }
 }

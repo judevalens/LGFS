@@ -11,6 +11,9 @@ import lgfs.api.ChunkAPI
 import lgfs.api.grpc.ChunkServiceImplementation
 import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.ChunkServerState
+import lgfs.gfs.FileProtocol
+import lgfs.gfs.chunk.ChunkService
+import lgfs.gfs.chunk.ChunkServiceActor
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
@@ -38,7 +41,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
     private var masterServiceKey: Optional<ServiceKey<ClusterProtocol>> = Optional.empty()
     private val masterUpMsg: Optional<ClusterProtocol.MasterUP> = Optional.empty()
     private val serviceKeys = HashMap<ServiceKey<ClusterProtocol>, ClusterProtocol.ChunkUp>();
-    private val chunkService: ActorRef<FileProtocol> = context.spawnAnonymous(ChunkService.create())
+    private val chunkService: ActorRef<FileProtocol> = context.spawnAnonymous(ChunkServiceActor.create())
 
     init {
         masterUpTopic.tell(Topic.subscribe(context.self))
