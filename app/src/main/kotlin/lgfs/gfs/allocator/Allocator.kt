@@ -15,16 +15,12 @@ class Allocator {
     private val chunkIdToRanks: HashMap<String, Double> = HashMap()
     private val numReplica = 3
     private val atomicChunkId = AtomicLong()
-
     private val leases = HashMap<Long, Lease>()
     private val chunkInventory = HashMap<Long, MutableList<String>>()
 
-    class LeaseHolder {
-        val leases = HashMap<Long, MutableSet<String>>()
-    }
-
     companion object {
-        const val CHUNK_SIZE = 64 * 1000 * 1000;
+        const val CHUNK_SIZE = 64 * 1000 * 1000
+        val LEASE_DURATION = Duration.ofMinutes(1).toMillis()
     }
 
     /**
@@ -89,8 +85,7 @@ class Allocator {
     fun allocateChunks(fileMetadata: FileMetadata): Pair<Boolean, ArrayList<ChunkMetadata>?> {
         val numChunks = ceil(fileMetadata.size.toDouble() / CHUNK_SIZE).toInt()
         val chunks = ArrayList<ChunkMetadata>()
-        for (i in 0..<numChunks) {
-            /*
+        for (i in 0..<numChunks) {/*
             this is probably not needed
             val replicas = assignChunkToServers()
             if (replicas.isEmpty()) {
@@ -113,11 +108,13 @@ class Allocator {
      * Grants a lease to chunk servers for a given chunk identified by its handle.
      * Leases are used to mutate chunks (create or update an existing chunk)
      */
-    fun grantLease(chunkHandles: List<Long>): ArrayList<Lease> {
-        val grantedLeases = ArrayList<Lease>()
+    fun grantLease(chunkHandles: List<Long>): HashMap<String, MutableList<Lease>> {
+        val grantedLeases = HashMap<String, MutableList<Lease>>()
         chunkHandles.forEach {
+            var currentLease: Lease? = null
             if (leases.containsKey(it) && isLeaseValid(leases[it]!!)) {
-                grantedLeases.add(leases[it]!!)
+                // grantedLeases.add(leases[it]!!)
+                currentLease = leases[it]!!
             } else {
                 /**
                  * if this chunk is already attributed to a set chunkServers then we'll just grant a new lease to one of the servers
@@ -126,13 +123,34 @@ class Allocator {
                 if (chunkInventory.containsKey(it)) {
                     val replicas = chunkInventory[it]!!
                     val primary = replicas.removeAt(0)
-                    grantedLeases.add(Lease(it, Duration.ofMinutes(1).toMinutes(), primary, replicas))
-                }else {
+                    currentLease = Lease(
+                        it,
+                        Duration.ofMinutes(1).toMillis(),
+                        LEASE_DURATION,
+                        primary,
+                        replicas
+
+                    )
+                } else {
                     val replicas = assignChunkToServers()
                     if (replicas.isNotEmpty()) {
                         val primary = replicas.removeAt(0)
-                        grantedLeases.add(Lease(it, Duration.ofMinutes(1).toMinutes(), primary, replicas))
+                        currentLease =
+                            Lease(
+                                it,
+                                Duration.ofMinutes(1).toMillis(),
+                                LEASE_DURATION,
+                                primary,
+                                replicas
+                            )
                     }
+                }
+            }
+            if (currentLease != null) {
+                if (grantedLeases.containsKey(currentLease.primary)) {
+                    grantedLeases[currentLease.primary]!!.add(currentLease)
+                } else {
+                    grantedLeases[currentLease.primary] = ArrayList(Collections.singleton(currentLease))
                 }
             }
         }

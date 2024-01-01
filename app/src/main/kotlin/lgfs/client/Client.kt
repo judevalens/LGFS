@@ -1,8 +1,10 @@
 package lgfs.client
 
+import Gfs
 import Gfs.CreateFileReq
 import MasterServiceGrpcKt
 import io.grpc.ManagedChannelBuilder
+import io.grpc.Status
 import io.grpc.StatusException
 import kotlinx.coroutines.runBlocking
 import lgfs.api.MasterApi
@@ -49,13 +51,7 @@ class Client() {
                         .build()
                 )
                 logger.info("created file at {} : {}", filePath, res.isSuccessful)
-                res.chunksList.forEach {
-                    logger.info(
-                        "#{} - chunk #{}",
-                        it.chunkIndex,
-                        it.chunkHandle,
-                    )
-                }
+                uploadChunks(res.chunksList)
             } catch (_: IllegalArgumentException) {
 
             } catch (_: NullPointerException) {
@@ -70,6 +66,38 @@ class Client() {
 
     }
 
+    private suspend fun deleteFile(filePathStr: String) {
+        try {
+            val res = masterApiStub.deleteFile(Gfs.DeleteFileReq.newBuilder().setFileName(testFilePath).build())
+            if (res.code == Status.OK.code.value()) {
+                logger.info("Successfully deleted file: {}", testFilePath)
+            } else {
+                logger.info("Failed to delete file: {}", testFilePath)
+            }
+        }catch (exception: StatusException) {
+            logger.error("Failed to delete file: {} \n {}", testFilePath,exception.message)
+        }
+
+    }
+
+    private suspend fun uploadChunks(chunks: List<Gfs.Chunk>) {
+        var i = 0
+        val l = chunks.size
+        var k = 0;
+        val chunkHandles = ArrayList<Long>()
+
+        while (k < l) {
+            chunkHandles.add(chunks[i].chunkHandle)
+            i++
+            if (i == 5 || k + 1 == l) {
+                i = 0
+                masterApiStub.getLease(Gfs.LeaseGrantReq.newBuilder().addAllChunkHandles(chunkHandles).build())
+                chunkHandles.clear()
+            }
+            k++
+        }
+    }
+
     private suspend fun handleCommand() {
         val parser: CommandLineParser = DefaultParser()
 
@@ -79,11 +107,14 @@ class Client() {
             Option.builder("c").longOpt("create").argName("path").numberOfArgs(Option.UNLIMITED_VALUES).hasArgs()
                 .desc("create a new with the specified path").build()
 
-        val property = Option.builder("D").longOpt("create").hasArgs().valueSeparator('=').build();
+        val deleteFile =
+            Option.builder("d").longOpt("delete").argName("path").numberOfArgs(Option.UNLIMITED_VALUES).hasArgs()
+                .desc("Delete the file at the provided path").build()
+
 
 
         options.addOption(createFile)
-        options.addOption(property)
+        options.addOption(deleteFile)
 
         while (true) {
             println("enter command :")
@@ -93,6 +124,9 @@ class Client() {
                 if (cmdLine.hasOption("create")) {
                     val filePath = cmdLine.getOptionValue("create")
                     createFile(filePath)
+                } else if (cmdLine.hasOption(deleteFile.longOpt)) {
+                    val filePath = cmdLine.getOptionValue(deleteFile.longOpt)
+                    deleteFile(filePath)
                 } else {
                     throw ParseException("Unrecognized option: ${commands[0]}")
                 }

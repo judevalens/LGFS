@@ -1,21 +1,24 @@
 package lgfs.gfs.allocator
 
+import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.AbstractBehavior
 import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 import lgfs.gfs.FileProtocol
+import lgfs.network.ClusterProtocol
 import org.slf4j.LoggerFactory
 
-class AllocatorActor(context: ActorContext<AllocatorProtocol>) : AbstractBehavior<AllocatorProtocol>(context) {
+class AllocatorActor(context: ActorContext<AllocatorProtocol>, val master: ActorRef<ClusterProtocol>) :
+    AbstractBehavior<AllocatorProtocol>(context) {
     private val allocator = Allocator()
     private val logger: org.slf4j.Logger = LoggerFactory.getLogger(this::class.java)
 
     companion object {
-        fun create(): Behavior<AllocatorProtocol> {
+        fun create(master: ActorRef<ClusterProtocol>): Behavior<AllocatorProtocol> {
             return Behaviors.setup {
-                AllocatorActor(it)
+                AllocatorActor(it, master)
             }
         }
     }
@@ -43,9 +46,19 @@ class AllocatorActor(context: ActorContext<AllocatorProtocol>) : AbstractBehavio
     }
 
     private fun onLeaseGrantReq(msg: AllocatorProtocol.LeaseGrantReq): Behavior<AllocatorProtocol> {
-        logger.info("{} - Processing lease grant request",msg.reqId)
+        logger.info("{} - Processing lease grant request", msg.reqId)
         val leases = allocator.grantLease(msg.chunkHandles)
-        msg.replyTo.tell(FileProtocol.LeaseGrantRes(leases))
+        msg.replyTo.tell(FileProtocol.LeaseGrantMapRes(msg.reqId,leases))
+
+/*        leases.forEach { entry ->
+            logger.debug("Forwarding lease grants to: ${entry.key}")
+            master.tell(
+                ClusterProtocol.ForwardToChunkService(
+                    entry.key,
+                    FileProtocol.LeaseGrantRes(msg.reqId, entry.value)
+                )
+            )
+        }*/
         return Behaviors.same()
     }
 }

@@ -4,6 +4,7 @@ syntax = "proto3";
 
 service MasterService {
   rpc createFile(CreateFileReq) returns (CreateFileRes);
+  rpc deleteFile(DeleteFileReq) returns (Status);
   rpc getLease(LeaseGrantReq) returns (LeaseGrantRes);
 }
 
@@ -14,6 +15,10 @@ service ChunkService {
 message CreateFileReq {
   string fileName = 1;
   int32 fileSize = 2;
+}
+
+message DeleteFileReq {
+  string fileName = 1;
 }
 
 message CreateFileRes {

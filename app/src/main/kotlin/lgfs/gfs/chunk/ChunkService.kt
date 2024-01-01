@@ -40,8 +40,8 @@ class ChunkService {
         mutationData[mutationId] = ChunkData(0, "", payload)
     }
 
-    fun handleLeaseGrant(chunkHandle: Long, givenAt: Long, duration: Long) {
-       // val lease = Lease(chunkHandle, givenAt)
+    fun handleLeaseGrant(leases : List<Lease>) {
+
         //leases[chunkHandle] = lease
     }
 }

@@ -12,7 +12,6 @@ import lgfs.api.grpc.ChunkServiceImplementation
 import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.ChunkServerState
 import lgfs.gfs.FileProtocol
-import lgfs.gfs.chunk.ChunkService
 import lgfs.gfs.chunk.ChunkServiceActor
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
@@ -86,6 +85,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
             .onMessage(ClusterProtocol.RequestChunkInventory::class.java, this::onRequestChunkInventory)
             .onMessage(ClusterProtocol.ChunkUp::class.java, this::handleChunkUp)
             .onMessage(ClusterProtocol.ListingRes::class.java, this::onListing)
+            .onMessage(ClusterProtocol.ForwardToChunkService::class.java, this::onForwardToChunkService)
             .build()
     }
 
@@ -95,7 +95,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
             masterServiceKey = Optional.of(ServiceKey.create(ClusterProtocol::class.java, msg.serverHostName))
             context.system.receptionist().tell(Receptionist.find(masterServiceKey.get(), listingAdapter))
         } else {
-            logger.info("Received master up signal from : {}",msg.serverHostName)
+            //logger.info("Received master up signal from : {}", msg.serverHostName)
         }
         return Behaviors.same()
     }
@@ -150,7 +150,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
      *
      */
     private fun onSendChunkUp(msg: SendChunkUp): Behavior<ClusterProtocol> {
-        logger.info("sending chunk up msg: ${context.self.path()}")
+        //logger.info("sending chunk up msg: ${context.self.path()}")
         chunkUpTopic.tell(
             Topic.publish(
                 ClusterProtocol.ChunkUp(
@@ -176,6 +176,12 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
             }
             masterRef.tell(inventory)
         }
+        return Behaviors.same()
+    }
+
+    private fun onForwardToChunkService(msg: ClusterProtocol.ForwardToChunkService): Behavior<ClusterProtocol> {
+        logger.info("forwarding message to chunk service")
+        chunkService.tell(msg.fileProtocolMsg);
         return Behaviors.same()
     }
 

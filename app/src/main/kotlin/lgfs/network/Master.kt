@@ -24,6 +24,7 @@ import java.util.*
 
 class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<ClusterProtocol>) :
     AbstractBehavior<ClusterProtocol>(context) {
+
     companion object {
         private val logger: Logger = LoggerFactory.getLogger(this::class.java)
         private const val MASTER_UP_TIMER_KEY = "master-up-timer"
@@ -54,11 +55,11 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
         ClusterProtocol.ListingRes(it)
     }
     private val reqIds = HashMap<Long, Long>()
-    private val allocator = context.spawnAnonymous(AllocatorActor.create())
+    private val allocator = context.spawnAnonymous(AllocatorActor.create(context.self))
     private val instanceId = UUID.randomUUID().toString()
 
     init {
-        val masterServiceRef = context.spawnAnonymous(MasterServiceActor.create(allocator, fs))
+        val masterServiceRef = context.spawnAnonymous(MasterServiceActor.create(context.self, allocator, fs))
         // sends heartbeat to cluster ?
         timers.startTimerWithFixedDelay(
             MASTER_UP_TIMER_KEY,
@@ -80,7 +81,9 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
         return newReceiveBuilder().onMessage(ClusterProtocol.MasterUP::class.java, this::onMasterUP)
             .onMessage(ClusterProtocol.ChunkUp::class.java, this::onChunkUp)
             .onMessage(ClusterProtocol.ListingRes::class.java, this::onListing)
-            .onMessage(ClusterProtocol.ChunkInventory::class.java, this::onChunkInventory).build()
+            .onMessage(ClusterProtocol.ChunkInventory::class.java, this::onChunkInventory)
+            .onMessage(ClusterProtocol.ForwardToChunkService::class.java, this::onForwardToChunkService)
+            .build()
     }
 
     private fun onMasterUP(msg: ClusterProtocol.MasterUP): Behavior<ClusterProtocol> {
@@ -115,7 +118,7 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
             context.system.receptionist().tell(Receptionist.find(serviceKey, listingAdapter))
             chunkInstancedIds[msg.serverHostName] = msg.instanceId
         } else {
-            logger.info("Received chunk up signal from: {}", msg.serverHostName)
+           // logger.info("Received chunk up signal from: {}", msg.serverHostName)
         }
         allocator.tell(AllocatorProtocol.UpdateServerState(msg.chunkServerState))
         return Behaviors.same()
@@ -134,6 +137,14 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
             is ClusterEvent.MemberUp -> {
                 memberEvent.member().address().host
             }
+        }
+        return Behaviors.same()
+    }
+
+    private fun onForwardToChunkService(msg: ClusterProtocol.ForwardToChunkService): Behavior<ClusterProtocol> {
+        if (chunkRefs.containsKey(msg.chunkHostName)) {
+            val chunkRef = chunkRefs[msg.chunkHostName]!!
+            chunkRef.tell(msg)
         }
         return Behaviors.same()
     }

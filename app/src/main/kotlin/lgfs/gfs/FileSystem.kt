@@ -19,6 +19,10 @@ class FileSystem {
         return radixTree.add(Key.getStringKey(metadata.path), metadata)
     }
 
+    fun deleteFile(fileName: String): Boolean {
+        return radixTree.delete(Key.getStringKey(fileName))
+    }
+
     fun printFs() {
         radixTree.printTree()
     }
@@ -28,7 +32,7 @@ class FileSystem {
         filePath?.let {
             val file = radixTree.find(Key.getStringKey(filePath))
             file?.let {
-            TODO()//return it.attachServerToChunk(chunkHandle, serverHostName)
+                TODO()//return it.attachServerToChunk(chunkHandle, serverHostName)
             }
         }
         return false

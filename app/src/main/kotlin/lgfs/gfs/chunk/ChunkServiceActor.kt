@@ -14,9 +14,9 @@ import java.net.Socket
 class ChunkServiceActor(context: ActorContext<FileProtocol>) : AbstractBehavior<FileProtocol>(context) {
     private val chunkService = ChunkService()
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
+
     class HandleIncomingTCPConnection(val socket: Socket) : FileProtocol
     class PayloadData(val mutationId: ByteArray, val payload: ByteArray) : FileProtocol
-    class LeaseGrant(val chunkHandle: Long, val givenAt: Long, val duration: Long) : FileProtocol
 
     companion object {
         fun create(): Behavior<FileProtocol> {
@@ -30,10 +30,7 @@ class ChunkServiceActor(context: ActorContext<FileProtocol>) : AbstractBehavior<
         val server = ServerSocket(9005)
         val tcpThread = Thread {
             while (true) {
-                logger.info(
-                    "" +
-                            "..........."
-                )
+                logger.info("data server is running...........")
                 val incomingConnection = server.accept();
                 context.self.tell(HandleIncomingTCPConnection(incomingConnection))
             }
@@ -45,7 +42,7 @@ class ChunkServiceActor(context: ActorContext<FileProtocol>) : AbstractBehavior<
         return newReceiveBuilder()
             .onMessage(FileProtocol.Mutations::class.java, this::onMutations)
             .onMessage(FileProtocol.CommitMutation::class.java, this::onCommitMutation)
-            .onMessage(LeaseGrant::class.java, this::onLeaseGrant)
+            .onMessage(FileProtocol.LeaseGrantRes::class.java, this::onLeaseGrant)
             .onMessage(HandleIncomingTCPConnection::class.java, this::onHandleIncomingTCPConnection)
             .onMessage(PayloadData::class.java, this::onPayloadData)
             .build()
@@ -71,8 +68,9 @@ class ChunkServiceActor(context: ActorContext<FileProtocol>) : AbstractBehavior<
         return Behaviors.same()
     }
 
-    private fun onLeaseGrant(msg: LeaseGrant): Behavior<FileProtocol> {
-        chunkService.handleLeaseGrant(msg.chunkHandle, msg.givenAt, msg.duration)
+    private fun onLeaseGrant(msg: FileProtocol.LeaseGrantRes): Behavior<FileProtocol> {
+        logger.info("req id: {}, Processing lease grant", msg.reqId)
+        chunkService.handleLeaseGrant(msg.leases)
         return Behaviors.same()
     }
 }
