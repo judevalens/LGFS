@@ -59,7 +59,7 @@ class MasterServiceImpl(private val masterGfs: MasterApi) : MasterServiceGrpcKt.
         res?.let {
             it.leases.forEach { lease ->
                 val grpcLease = Gfs.Lease.newBuilder()
-                    .setChunkHandle(lease.chunkId)
+                    .setChunkHandle(lease.chunkHandle)
                     .setPrimary(lease.primary)
                     .addAllReplicas(lease.replicas)
                     .setGrantedAt(lease.ts)

@@ -1,40 +1,41 @@
 package lgfs.gfs
 
 import lgfs.network.Secrets
+import org.slf4j.LoggerFactory
+import java.io.File
+import java.io.IOException
 import java.nio.file.Paths
-import java.util.*
 
-class ChunkFile(private val chunkPath: String) {
 
-    class Memento(val filePath: String) {
-    }
+class ChunkFile(private val chunkHandle: String) {
+    private val logger: org.slf4j.Logger = LoggerFactory.getLogger(this::class.java)
+
+    class Memento(val file: File)
 
     var version = 0
-    var tmpPath = Paths.get(Secrets.getSecrets().getHomeDir(), "/tmp/", chunkPath)
-    fun save(): Memento {
-        val chunkPath = Paths.get(Secrets.getSecrets().getHomeDir(), chunkPath)
+
+    fun save(): Memento? {
+        val baseDirPath = Paths.get(Secrets.getSecrets().getHomeDir())
+        val chunkPath = Paths.get(Secrets.getSecrets().getHomeDir(), chunkHandle)
         val chunkFile = chunkPath.toFile()
-
-        val tmpFile = Paths.get(Secrets.getSecrets().getHomeDir(), UUID.randomUUID().toString()).toFile()
+        val tmpFile = kotlin.io.path.createTempFile(directory = baseDirPath).toFile()
         val tmpOutputStream = tmpFile.outputStream()
-
-        val b = tmpFile.inputStream().read();
-        while (b > -1) {
+        try {
+            val b = chunkFile.inputStream().readAllBytes();
             tmpOutputStream.write(b);
+        } catch (exception: IOException) {
+            logger.error(exception.toString())
+            return null
         }
-
-        return Memento(tmpFile.path)
+        return Memento(tmpFile)
     }
 
     fun restore(memento: Memento) {
-
     }
 
     fun writeChunk(mutation: FileProtocol.Mutation, chunkData: ChunkData) {
-        val chunkPath = Paths.get(Secrets.getSecrets().getHomeDir(), chunkPath)
+        val chunkPath = Paths.get(Secrets.getSecrets().getHomeDir(), chunkHandle)
         val chunkFile = chunkPath.toFile()
-        TODO()
-        //chunkFile.outputStream().write(chunkData.data, mutation.offset, chunkData.data.size)
+        chunkFile.outputStream().write(chunkData.data, mutation.offset, chunkData.data.size)
     }
-
 }

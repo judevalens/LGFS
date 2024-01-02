@@ -13,7 +13,6 @@ class ChunkService {
     private val mutationData = HashMap<String, ChunkData>()
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
     fun addMutations(mutations: List<FileProtocol.Mutation>): Boolean {
-        val mutationHolder =
             mutations.forEach { mutation ->
                 var mutationHolder = MutationHolder(mutation.chunkHandle)
                 if (mutationHolders.containsKey(mutation.chunkHandle)) {
@@ -40,8 +39,15 @@ class ChunkService {
         mutationData[mutationId] = ChunkData(0, "", payload)
     }
 
-    fun handleLeaseGrant(leases : List<Lease>) {
-
-        //leases[chunkHandle] = lease
+    fun handleLeaseGrant(newLeases: List<Lease>) {
+        newLeases.forEach {
+            leases[it.chunkHandle] = it
+            if (mutationHolders.containsKey(it.chunkHandle)) {
+                mutationHolders[it.chunkHandle]?.lease = it
+            } else {
+                mutationHolders[it.chunkHandle] = MutationHolder(it.chunkHandle)
+                mutationHolders[it.chunkHandle]?.lease = it
+            }
+        }
     }
 }

@@ -4,8 +4,9 @@ import java.nio.ByteBuffer
 import java.util.*
 
 class MutationHolder(private val chunkHandle: Long) {
-    private val chunkLeases = HashMap<Long, Lease>()
     private var mutationCounter = 0;
+    var lease: Lease? = null
+
 
     // maps client id
     private val clientMutations = HashMap<String, MutableList<FileProtocol.Mutation>>()
@@ -20,7 +21,7 @@ class MutationHolder(private val chunkHandle: Long) {
         }
         var updatedMutation = mutation
         if (setSerial) {
-            updatedMutation =  FileProtocol.Mutation(
+            updatedMutation = FileProtocol.Mutation(
                 mutation.clientId,
                 mutation.chunkHandle,
                 mutation.mutationId,
@@ -34,9 +35,7 @@ class MutationHolder(private val chunkHandle: Long) {
     }
 
     fun commitMutation(clientId: String, chunkBlocks: HashMap<String, ChunkData>): Boolean {
-        if (!chunkLeases.containsKey(chunkHandle)) return TODO()
-        val lease = chunkLeases[chunkHandle]!!
-        if (!lease.isValid()) return TODO()
+        if ((lease == null) || isLeaseValid(lease!!)) return TODO()
         // TODO check that this client has pending mutations
         val mutations = clientMutations[clientId]!!
         mutations.forEach { mutation: FileProtocol.Mutation ->
@@ -59,5 +58,9 @@ class MutationHolder(private val chunkHandle: Long) {
     private fun getSerial(): Int {
         mutationCounter += 1
         return mutationCounter
+    }
+
+    private fun isLeaseValid(lease: Lease): Boolean {
+        return true
     }
 }

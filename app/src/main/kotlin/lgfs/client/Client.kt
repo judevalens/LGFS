@@ -23,7 +23,7 @@ class Client() {
     private val masterAddress = "172.20.128.2"
     private val testFilePath = "/home/jude/Documents/LGFS/.gitignore"
     private var masterApiStub: MasterServiceGrpcKt.MasterServiceCoroutineStub
-
+    private val DATA_PORT = "9005g"
     init {
         logger.info("GFS client has been initialized")
 
