@@ -37,7 +37,7 @@ interface FileProtocol {
 
     class CommitMutation(val clientId: String, val chunkHandle: Long, val replicas: List<String>) : FileProtocol
     class Mutations(val mutations: List<Mutation>) : FileProtocol
-    class LeaseGrantReq(val reqId: String, val chunkHandles: List<Long>, val replyTo: ActorRef<FileProtocol>) :
+    class LeaseGrantReq(val reqId: String, val chunkMetadataList: List<ChunkMetadata>, val replyTo: ActorRef<FileProtocol>) :
         FileProtocol
 
     class LeaseGrantMapRes(val reqId: String, val leases: HashMap<String, MutableList<Lease>>) : FileProtocol

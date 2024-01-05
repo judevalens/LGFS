@@ -28,7 +28,7 @@ message CreateFileRes {
 }
 
 message Lease {
-  int64 chunkHandle = 1;
+  Chunk chunk = 1;
   int64 grantedAt = 2;
   int64 duration = 3;
   string primary = 4;
@@ -36,7 +36,7 @@ message Lease {
 }
 
 message LeaseGrantReq{
-  repeated int64 chunkHandles = 1;
+  repeated Chunk chunks = 1;
 }
 
 message LeaseGrantRes {

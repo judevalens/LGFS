@@ -4,5 +4,6 @@ WORKDIR ./
 RUN mkdir "app"
 ADD app/build/install/ .
 #RUN cd app
-RUN cd app && mkdir conf && cd conf #&& touch application.conf && touch chunk.conf
+RUN cd app && mkdir conf && cd conf && \
+    cd ../ && mkdir lgfs_dir
 ENTRYPOINT cd "app/bin" && ./app

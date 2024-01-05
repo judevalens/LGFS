@@ -16,7 +16,11 @@ class ChunkFile(private val chunkHandle: String) {
 
     fun save(): Memento? {
         val baseDirPath = Paths.get(Secrets.getSecrets().getHomeDir())
-        val chunkPath = Paths.get(Secrets.getSecrets().getHomeDir(), chunkHandle)
+
+        val tmpFile = kotlin.io.path.createTempFile(directory = baseDirPath).toFile()
+        logger.info("create tmp file at: {}", tmpFile.path)
+        return null
+        /*val chunkPath = Paths.get(Secrets.getSecrets().getHomeDir(), chunkHandle)
         val chunkFile = chunkPath.toFile()
         val tmpFile = kotlin.io.path.createTempFile(directory = baseDirPath).toFile()
         val tmpOutputStream = tmpFile.outputStream()
@@ -27,7 +31,7 @@ class ChunkFile(private val chunkHandle: String) {
             logger.error(exception.toString())
             return null
         }
-        return Memento(tmpFile)
+        return Memento(tmpFile)*/
     }
 
     fun restore(memento: Memento) {

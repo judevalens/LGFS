@@ -32,6 +32,7 @@ class ChunkServiceActor(context: ActorContext<FileProtocol>) : AbstractBehavior<
             while (true) {
                 logger.info("data server is running...........")
                 val incomingConnection = server.accept();
+                logger.info("Received new tcp connection from : {}",incomingConnection.remoteSocketAddress.toString())
                 context.self.tell(HandleIncomingTCPConnection(incomingConnection))
             }
         }

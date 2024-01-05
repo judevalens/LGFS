@@ -8,10 +8,10 @@ import io.grpc.Status
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.future.await
 import lgfs.api.MasterApi
+import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.FileMetadata
 import lgfs.gfs.FileProtocol
 import org.slf4j.LoggerFactory
-
 
 class MasterServiceImpl(private val masterGfs: MasterApi) : MasterServiceGrpcKt.MasterServiceCoroutineImplBase() {
     private val logger: org.slf4j.Logger = LoggerFactory.getLogger(this::class.java)
@@ -20,8 +20,7 @@ class MasterServiceImpl(private val masterGfs: MasterApi) : MasterServiceGrpcKt.
         val reqIdElement = currentCoroutineContext()[TagInterceptor.ReqIdKey]
         val reqId = reqIdElement!!.keyStr
         logger.info("reqId: {}, received create file request", reqId)
-        val res = masterGfs
-            .createFile(reqId, FileMetadata(request.fileName, false, request.fileSize.toLong()))
+        val res = masterGfs.createFile(reqId, FileMetadata(request.fileName, false, request.fileSize.toLong()))
             .await() as? FileProtocol.CreateFileRes
         res?.let { createFileRes ->
             val grpcChunks = mutableListOf<Gfs.Chunk>()
@@ -53,13 +52,21 @@ class MasterServiceImpl(private val masterGfs: MasterApi) : MasterServiceGrpcKt.
 
         logger.info("reqId: {}, received lease grant request", reqId)
 
-        val res = masterGfs.getLease(reqId, request.chunkHandlesList).await() as? FileProtocol.LeaseGrantRes
+        val chunkList = ArrayList<ChunkMetadata>(request.chunksList.size)
+        request.chunksList.forEach {
+            chunkList.add(ChunkMetadata(it.chunkHandle,it.chunkIndex))
+        }
+        val res = masterGfs.getLease(reqId, chunkList).await() as? FileProtocol.LeaseGrantRes
         val leases = ArrayList<Gfs.Lease>()
 
         res?.let {
             it.leases.forEach { lease ->
+                val gfsChunk = Gfs.Chunk.newBuilder()
+                    .setChunkHandle(lease.chunkMetadata.handle)
+                    .setChunkIndex(lease.chunkMetadata.index)
+                    .build()
                 val grpcLease = Gfs.Lease.newBuilder()
-                    .setChunkHandle(lease.chunkHandle)
+                    .setChunk(gfsChunk)
                     .setPrimary(lease.primary)
                     .addAllReplicas(lease.replicas)
                     .setGrantedAt(lease.ts)
@@ -75,11 +82,7 @@ class MasterServiceImpl(private val masterGfs: MasterApi) : MasterServiceGrpcKt.
 
     val port = 7009
 
-    val server: Server = ServerBuilder
-        .forPort(port)
-        .intercept(TagInterceptor(context))
-        .addService(this)
-        .build()
+    val server: Server = ServerBuilder.forPort(port).intercept(TagInterceptor(context)).addService(this).build()
 
     fun startServer() {
         server.start()

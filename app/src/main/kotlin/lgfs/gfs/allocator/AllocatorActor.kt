@@ -47,7 +47,7 @@ class AllocatorActor(context: ActorContext<AllocatorProtocol>, val master: Actor
 
     private fun onLeaseGrantReq(msg: AllocatorProtocol.LeaseGrantReq): Behavior<AllocatorProtocol> {
         logger.info("{} - Processing lease grant request", msg.reqId)
-        val leases = allocator.grantLease(msg.chunkHandles)
+        val leases = allocator.grantLease(msg.chunkMetadataList)
         msg.replyTo.tell(FileProtocol.LeaseGrantMapRes(msg.reqId,leases))
 
 /*        leases.forEach { entry ->

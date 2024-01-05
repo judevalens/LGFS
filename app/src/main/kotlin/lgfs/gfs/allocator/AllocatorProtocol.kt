@@ -11,6 +11,8 @@ interface AllocatorProtocol {
         AllocatorProtocol
 
     class UpdateServerState(val state: ChunkServerState) : AllocatorProtocol
-    class LeaseGrantReq(val reqId: String, val chunkHandles: List<Long>, val replyTo: ActorRef<FileProtocol>) : AllocatorProtocol
+    class LeaseGrantReq(val reqId: String, val chunkMetadataList: List<ChunkMetadata>, val replyTo:
+    ActorRef<FileProtocol>) :
+        AllocatorProtocol
     class LeaseGrantRes(val reqId: String, val leases: ArrayList<Lease>) : AllocatorProtocol
 }

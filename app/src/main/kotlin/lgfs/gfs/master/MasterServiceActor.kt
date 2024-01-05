@@ -69,7 +69,7 @@ class MasterServiceActor(
         val reqId = msg.reqId
         logger.info("req id : {}, Received lease grant request", msg.reqId)
         leaseGranReqs[reqId] = msg
-        allocator.tell(AllocatorProtocol.LeaseGrantReq(reqId, msg.chunkHandles, context.self))
+        allocator.tell(AllocatorProtocol.LeaseGrantReq(reqId, msg.chunkMetadataList, context.self))
         return Behaviors.same()
     }
 

@@ -8,7 +8,7 @@ import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.receptionist.ServiceKey
 import akka.cluster.typed.Cluster
 import lgfs.api.ChunkAPI
-import lgfs.api.grpc.ChunkServiceImplementation
+import lgfs.api.grpc.ChunkServiceImpl
 import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.ChunkServerState
 import lgfs.gfs.FileProtocol
@@ -36,7 +36,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
     private val listingAdapter = context.messageAdapter(Receptionist.Listing::class.java) {
         ClusterProtocol.ListingRes(it)
     }
-    val instanceID = UUID.randomUUID().toString()
+    private val instanceID = UUID.randomUUID().toString()
     private var masterServiceKey: Optional<ServiceKey<ClusterProtocol>> = Optional.empty()
     private val masterUpMsg: Optional<ClusterProtocol.MasterUP> = Optional.empty()
     private val serviceKeys = HashMap<ServiceKey<ClusterProtocol>, ClusterProtocol.ChunkUp>();
@@ -55,7 +55,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
         )
 
         val chunkApi = ChunkAPI(chunkService, context.system)
-        val chunkGrpcService = ChunkServiceImplementation(chunkApi)
+        val chunkGrpcService = ChunkServiceImpl(chunkApi)
         chunkGrpcService.startServer()
     }
 
@@ -94,6 +94,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
             logger.info("Received master up signal from : {}, retrieving actor ref", msg.serverHostName)
             masterServiceKey = Optional.of(ServiceKey.create(ClusterProtocol::class.java, msg.serverHostName))
             context.system.receptionist().tell(Receptionist.find(masterServiceKey.get(), listingAdapter))
+            masterInstanceId = msg.instanceId
         } else {
             //logger.info("Received master up signal from : {}", msg.serverHostName)
         }

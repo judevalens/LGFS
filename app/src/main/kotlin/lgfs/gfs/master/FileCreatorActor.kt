@@ -108,7 +108,7 @@ class FileCreatorActor(
                     replyTo.tell(FileProtocol.CreateFileRes(reqId, true, msg.chunks))
                 } else {
                     logger.info("{} - Failed to add file path: {} to directory tree", reqId, fileMetadata.path)
-                    replyTo.tell(FileProtocol.CreateFileRes(reqId, false, msg.chunks))
+                    replyTo.tell(FileProtocol.CreateFileRes(reqId, false, emptyList()))
                 }
                 Behaviors.stopped()
             }.build()

@@ -41,12 +41,13 @@ class ChunkService {
 
     fun handleLeaseGrant(newLeases: List<Lease>) {
         newLeases.forEach {
-            leases[it.chunkHandle] = it
-            if (mutationHolders.containsKey(it.chunkHandle)) {
-                mutationHolders[it.chunkHandle]?.lease = it
+            val chunkHandle = it.chunkMetadata.handle
+            leases[chunkHandle] = it
+            if (mutationHolders.containsKey(chunkHandle)) {
+                mutationHolders[chunkHandle]?.lease = it
             } else {
-                mutationHolders[it.chunkHandle] = MutationHolder(it.chunkHandle)
-                mutationHolders[it.chunkHandle]?.lease = it
+                mutationHolders[chunkHandle] = MutationHolder(chunkHandle)
+                mutationHolders[chunkHandle]?.lease = it
             }
         }
     }

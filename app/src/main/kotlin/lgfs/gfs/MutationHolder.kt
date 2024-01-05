@@ -60,7 +60,7 @@ class MutationHolder(private val chunkHandle: Long) {
         return mutationCounter
     }
 
-    private fun isLeaseValid(lease: Lease): Boolean {
+    private fun isLeaseValid(lease : Lease) : Boolean {
         return true
     }
 }

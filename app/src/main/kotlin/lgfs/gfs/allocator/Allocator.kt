@@ -108,23 +108,24 @@ class Allocator {
      * Grants a lease to chunk servers for a given chunk identified by its handle.
      * Leases are used to mutate chunks (create or update an existing chunk)
      */
-    fun grantLease(chunkHandles: List<Long>): HashMap<String, MutableList<Lease>> {
+    fun grantLease(chunkMetadataList: List<ChunkMetadata>): HashMap<String, MutableList<Lease>> {
         val grantedLeases = HashMap<String, MutableList<Lease>>()
-        chunkHandles.forEach {
+        chunkMetadataList.forEach { chunkMetadata ->
             var currentLease: Lease? = null
-            if (leases.containsKey(it) && isLeaseValid(leases[it]!!)) {
+            var chunkHandle = chunkMetadata.handle
+            if (leases.containsKey(chunkHandle) && isLeaseValid(leases[chunkHandle]!!)) {
                 // grantedLeases.add(leases[it]!!)
-                currentLease = leases[it]!!
+                currentLease = leases[chunkHandle]!!
             } else {
                 /**
                  * if this chunk is already attributed to a set chunkServers then we'll just grant a new lease to one of the servers
                  * otherwise we assign this chunk to a set of severs
                  */
-                if (chunkInventory.containsKey(it)) {
-                    val replicas = chunkInventory[it]!!
+                if (chunkInventory.containsKey(chunkHandle)) {
+                    val replicas = chunkInventory[chunkHandle]!!
                     val primary = replicas.removeAt(0)
                     currentLease = Lease(
-                        it,
+                        chunkMetadata,
                         Duration.ofMinutes(1).toMillis(),
                         LEASE_DURATION,
                         primary,
@@ -137,7 +138,7 @@ class Allocator {
                         val primary = replicas.removeAt(0)
                         currentLease =
                             Lease(
-                                it,
+                                chunkMetadata,
                                 Duration.ofMinutes(1).toMillis(),
                                 LEASE_DURATION,
                                 primary,
