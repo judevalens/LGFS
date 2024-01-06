@@ -1,12 +1,13 @@
 package lgfs.gfs
 
-class Lease(
-    val chunkMetadata: ChunkMetadata, val ts: Long, val duration: Long, val primary: String, val replicas:
-    List<String>
-) {
+import lgfs.network.ServerAddress
 
-    fun isValid(): Boolean {
-        return true
-    }
+class Lease(
+	val primary: ServerAddress, val chunkMetadata: ChunkMetadata, val ts: Long, val duration: Long, val replicas:
+	List<ServerAddress>
+) {
+	fun isValid(): Boolean {
+		return true
+	}
 
 }

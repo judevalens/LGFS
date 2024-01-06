@@ -27,12 +27,19 @@ message CreateFileRes {
   Status resStatus = 3;
 }
 
+message ServerAddress{
+  string hostName = 1;
+  int32 akkaPort = 2;
+  int32 dataPort = 3;
+  int32 apiPort = 4;
+}
+
 message Lease {
   Chunk chunk = 1;
   int64 grantedAt = 2;
   int64 duration = 3;
-  string primary = 4;
-  repeated string replicas = 5;
+  ServerAddress primary = 4;
+  repeated ServerAddress replicas = 5;
 }
 
 message LeaseGrantReq{
@@ -54,13 +61,17 @@ enum MutationType {
   Write = 1;
 }
 message Mutation {
-  int64 chunkHandle = 1;
-  int64 chunkIndex = 2;
-  int64 serial = 3;
+  Chunk chunk = 1;
+  int32 serial = 3;
   MutationType type = 4;
+  string mutationId = 5;
+  string primary = 6;
+  repeated string replicas = 7;
+  int32 offset = 8;
+  string clientId = 9;
 }
 message Mutations {
-  Mutation mutations = 1;
+  repeated Mutation mutations = 1;
 }
 message Status {
   string status = 1;

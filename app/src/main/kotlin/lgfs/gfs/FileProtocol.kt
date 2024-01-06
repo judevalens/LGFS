@@ -6,6 +6,7 @@ import com.fasterxml.jackson.annotation.JsonSubTypes
 import com.fasterxml.jackson.annotation.JsonTypeInfo
 import com.fasterxml.jackson.databind.annotation.JsonSerialize
 import lgfs.network.JsonSerializable
+import lgfs.network.ServerAddress
 
 @JsonSerialize()
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "type")
@@ -27,20 +28,24 @@ interface FileProtocol {
 
     class Mutation(
         val clientId: String,
-        val chunkHandle: Long,
+        val chunkMetadata: ChunkMetadata,
         val mutationId: String,
         val primary: String,
-        val replicas: String,
+        val replicas: List<String>,
         val serial: Int,
         val offset: Int
     ) : FileProtocol
 
     class CommitMutation(val clientId: String, val chunkHandle: Long, val replicas: List<String>) : FileProtocol
     class Mutations(val mutations: List<Mutation>) : FileProtocol
-    class LeaseGrantReq(val reqId: String, val chunkMetadataList: List<ChunkMetadata>, val replyTo: ActorRef<FileProtocol>) :
+    class LeaseGrantReq(
+        val reqId: String,
+        val chunkMetadataList: List<ChunkMetadata>,
+        val replyTo: ActorRef<FileProtocol>
+    ) :
         FileProtocol
 
-    class LeaseGrantMapRes(val reqId: String, val leases: HashMap<String, MutableList<Lease>>) : FileProtocol
+    class LeaseGrantMapRes(val reqId: String, val leases: HashMap<ServerAddress, MutableList<Lease>>) : FileProtocol
     class LeaseGrantRes @JsonCreator constructor(val reqId: String, val leases: MutableList<Lease>) : FileProtocol,
         JsonSerializable
 }

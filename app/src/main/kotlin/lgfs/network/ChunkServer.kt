@@ -32,7 +32,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
     private lateinit var masterRef: ActorRef<ClusterProtocol>
     private lateinit var masterInstanceId: String
     private val chunks = HashMap<Long, ChunkMetadata>()
-    private val chunkServers = HashMap<String, ActorRef<ClusterProtocol>>()
+    private val chunkServers = HashMap<ServerAddress, ActorRef<ClusterProtocol>>()
     private val listingAdapter = context.messageAdapter(Receptionist.Listing::class.java) {
         ClusterProtocol.ListingRes(it)
     }
@@ -91,25 +91,25 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
 
     private fun handleMasterUp(msg: ClusterProtocol.MasterUP): Behavior<ClusterProtocol> {
         if (!this::masterRef.isInitialized || !this::masterInstanceId.isInitialized || msg.instanceId != masterInstanceId) {
-            logger.info("Received master up signal from : {}, retrieving actor ref", msg.serverHostName)
-            masterServiceKey = Optional.of(ServiceKey.create(ClusterProtocol::class.java, msg.serverHostName))
+            logger.info("Received master up signal from : {}, retrieving actor ref", msg.serverAddress)
+            masterServiceKey = Optional.of(ServiceKey.create(ClusterProtocol::class.java, msg.serverAddress.hostName))
             context.system.receptionist().tell(Receptionist.find(masterServiceKey.get(), listingAdapter))
             masterInstanceId = msg.instanceId
         } else {
-            //logger.info("Received master up signal from : {}", msg.serverHostName)
+            //logger.info("Received master up signal from : {}", msg.serverAddress)
         }
         return Behaviors.same()
     }
 
     private fun handleChunkUp(msg: ClusterProtocol.ChunkUp): Behavior<ClusterProtocol> {
 
-        if (msg.serverHostName == Secrets.getSecrets().getHostName()) {
-            logger.debug("Received own chunk up signal, retrieving actor ref at : {}", msg.serverHostName)
+        if (msg.serverAddress == Secrets.getSecrets().getServerAddress()) {
+            logger.debug("Received own chunk up signal, retrieving actor ref at : {}", msg.serverAddress)
             return Behaviors.same()
         }
 
-        logger.info("Received chunk up signal, retrieving actor ref at : {}", msg.serverHostName)
-        val serviceKey = ServiceKey.create(ClusterProtocol::class.java, msg.serverHostName)
+        logger.info("Received chunk up signal, retrieving actor ref at : {}", msg.serverAddress)
+        val serviceKey = ServiceKey.create(ClusterProtocol::class.java, msg.serverAddress.hostName)
         context.system.receptionist()
             .tell(Receptionist.find(serviceKey, listingAdapter))
         serviceKeys[serviceKey] = msg
@@ -136,10 +136,10 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
                 val actors = msg.listing.getServiceInstances(it)
                 if (actors.isNotEmpty()) {
                     val chunkUpMsg = serviceKeys[msg.listing.key]!!
-                    chunkServers[chunkUpMsg.serverHostName] = actors.first()
+                    chunkServers[chunkUpMsg.serverAddress] = actors.first()
                     logger.info(
                         "Received actor ref for ChunkServer: {}, key id: {}",
-                        chunkServers[chunkUpMsg.serverHostName]!!.path(), it.id()
+                        chunkServers[chunkUpMsg.serverAddress]!!.path(), it.id()
                     )
                 }
             }
@@ -155,7 +155,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
         chunkUpTopic.tell(
             Topic.publish(
                 ClusterProtocol.ChunkUp(
-                    Secrets.getSecrets().getHostName(),
+                    Secrets.getSecrets().getServerAddress(),
                     getState(),
                     instanceID
                 )
@@ -187,6 +187,6 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
     }
 
     private fun getState(): ChunkServerState {
-        return ChunkServerState(Secrets.getSecrets().getHostName())
+        return ChunkServerState(Secrets.getSecrets().getServerAddress())
     }
 }

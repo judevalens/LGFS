@@ -14,9 +14,10 @@ class ChunkService {
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
     fun addMutations(mutations: List<FileProtocol.Mutation>): Boolean {
             mutations.forEach { mutation ->
-                var mutationHolder = MutationHolder(mutation.chunkHandle)
-                if (mutationHolders.containsKey(mutation.chunkHandle)) {
-                    mutationHolder = mutationHolders[mutation.chunkHandle]!!
+                val chunkHandle = mutation.chunkMetadata.handle
+                var mutationHolder = MutationHolder(chunkHandle)
+                if (mutationHolders.containsKey(chunkHandle)) {
+                    mutationHolder = mutationHolders[chunkHandle]!!
                 }
                 mutationHolder.addMutation(mutation, isPrimary(mutation.primary))
 

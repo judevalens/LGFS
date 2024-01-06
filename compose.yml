@@ -1,18 +1,18 @@
 services:
   master:
     image: lgfs:latest
-    ports:
-      - "2551:2551"
-      - "7009"
     environment:
       NODE_PORT: 2551
-      HOST_NAME: 172.20.128.2
+      API_PORT: 3000
+      DATA_PORT: 9005
+      HOST_NAME: "master"
       NODE_ROLE: "master"
       CONF_PATH: "/app/conf/application.conf"
       NODE_TYPE: "server"
-    networks:
-      static-network:
-        ipv4_address: 172.20.128.2
+    ports:
+      - "2551:2551"
+      - "9005:9005"
+      - "3000:3000"
     volumes:
       - type: bind
         source: "./app/src/main/resources/application.conf"
@@ -26,15 +26,14 @@ services:
     image: lgfs:latest
     ports:
       - "2552:2552"
-      - "7009"
-    networks:
-      static-network:
-        ipv4_address: 172.20.128.3
+      - "5000:5000"
+      - "9006:9006"
+
     environment:
       NODE_PORT: 2552
-      API_PORT: 9005
+      API_PORT: 5000
       DATA_PORT: 9006
-      HOST_NAME: 172.20.128.3
+      HOST_NAME: "chunk-1"
       CONF_PATH: "/app/conf/application.conf"
       NODE_TYPE: "server"
     volumes:
@@ -47,15 +46,13 @@ services:
     image: lgfs:latest
     ports:
       - "2553:2553"
-      - "7009"
-    networks:
-      static-network:
-        ipv4_address: 172.20.128.4
+      - "4001:4001"
+      - "9007:9007"
     environment:
       NODE_PORT: 2553
-      API_PORT: 9005
-      DATA_PORT: 9006
-      HOST_NAME: 172.20.128.4
+      API_PORT: 4001
+      DATA_PORT: 9007
+      HOST_NAME: "chunk-2"
       CONF_PATH: "/app/conf/application.conf"
       NODE_TYPE: "server"
     volumes:
@@ -68,15 +65,13 @@ services:
     image: lgfs:latest
     ports:
       - "2554:2554"
-      - "7009"
-    networks:
-      static-network:
-        ipv4_address: 172.20.128.5
+      - "4003:4003"
+      - "9011:9011"
     environment:
       NODE_PORT: 2554
-      API_PORT: 9005
-      DATA_PORT: 9006
-      HOST_NAME: 172.20.128.5
+      API_PORT: 4003
+      DATA_PORT: 9011
+      HOST_NAME: "chunk-3"
       CONF_PATH: "/app/conf/application.conf"
       NODE_TYPE: "server"
     volumes:
@@ -89,14 +84,14 @@ services:
     image: lgfs:latest
     ports:
       - "2555:2555"
-    networks:
-      static-network:
-        ipv4_address: 172.20.128.6
+      - "4004:4004"
+      - "9012:9012"
+
     environment:
       NODE_PORT: 2555
-      API_PORT: 9005
-      DATA_PORT: 9006
-      HOST_NAME: 172.20.128.6
+      API_PORT: 4004
+      DATA_PORT: 90012
+      HOST_NAME: "chunk-4"
       CONF_PATH: "/app/conf/application.conf"
       NODE_TYPE: "server"
     volumes:
@@ -105,9 +100,8 @@ services:
         target: "/app/conf/application.conf"
     profiles: [ "chunk","all" ]
 
-networks:
-  static-network:
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
-          #docker-compose v3+ do not use ip_range
+#networks:
+#  static-network:
+#    ipam:
+ #     config:
+#        - subnet: 172.20.0.0/16

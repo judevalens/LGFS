@@ -10,11 +10,11 @@ interface ClusterProtocol {
     class Handshake(listing: Receptionist.Listing) : ClusterProtocol,
         JsonSerializable
 
-    class MasterUP @JsonCreator constructor(val serverHostName: String, val instanceId: String) : ClusterProtocol,
+    class MasterUP @JsonCreator constructor(val serverAddress: ServerAddress, val instanceId: String) : ClusterProtocol,
         JsonSerializable
 
     class ChunkUp @JsonCreator constructor(
-        val serverHostName: String, val chunkServerState: ChunkServerState, val instanceId: String
+        val serverAddress: ServerAddress, val chunkServerState: ChunkServerState, val instanceId: String
     ) : ClusterProtocol,
         JsonSerializable
 
@@ -40,7 +40,7 @@ interface ClusterProtocol {
      * Sent from an actor on master and forwarded to the chunk service
      */
     class ForwardToChunkService @JsonCreator constructor(
-        val chunkHostName: String, val fileProtocolMsg: FileProtocol
+        val serverAddress: ServerAddress, val fileProtocolMsg: FileProtocol
     ) : ClusterProtocol,
         JsonSerializable
 }
