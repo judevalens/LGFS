@@ -20,7 +20,7 @@ class Allocator {
 	private val chunkInventory = HashMap<Long, MutableList<ServerAddress>>()
 
 	companion object {
-		const val CHUNK_SIZE = 64 * 1000 * 1000
+		const val CHUNK_SIZE = 64 * 1000
 		val LEASE_DURATION = Duration.ofMinutes(1).toMillis()
 	}
 

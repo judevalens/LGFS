@@ -1,50 +1,62 @@
 package lgfs.gfs.chunk
 
 import akka.actor.typed.ActorRef
-import akka.actor.typed.Behavior
 import akka.actor.typed.javadsl.ActorContext
-import akka.actor.typed.javadsl.Behaviors
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import lgfs.gfs.FileProtocol
+import lgfs.network.Secrets
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.net.ServerSocket
 import java.net.Socket
 import java.nio.ByteBuffer
 
 class TCPConnectionHandler(
-	context: ActorContext<State>,
-	private val socket: Socket,
 	private val replyTo: ActorRef<FileProtocol>
 ) {
 	interface State
 
 	companion object {
 		private val logger: Logger = LoggerFactory.getLogger(this::class.java)
+	}
 
-		fun create(socket: Socket, replyTo: ActorRef<FileProtocol>): Behavior<State> {
-			return Behaviors.setup {
-				TCPConnectionHandler(
-					it,
-					socket,
-					replyTo
-				).listening()
+
+	@OptIn(DelicateCoroutinesApi::class)
+	 fun startDataServer() {
+		val job = GlobalScope.launch {
+			val server = ServerSocket(Secrets.getSecrets().getServerAddress().dataPort)
+			while (true) {
+				val connection = server.accept()
+				launch {
+					listening(connection)
+				}
 			}
 		}
 	}
 
-	private fun listening(): Behavior<State> {
-		val buffer = ByteArray(4)
-		val payloadLenByte = socket.getInputStream().readNBytes(4)
-		val payloadLen = ByteBuffer.allocate(4).put(payloadLenByte).rewind().getInt()
-		val payloadId = socket.getInputStream().readNBytes(16)
-		val payload = socket.getInputStream().readNBytes(payloadLen)
-		replyTo.tell(
-			ChunkServiceActor.PayloadData(
-				payloadId,
-				payload
+	private fun listening(connection: Socket) {
+		logger.info("New tcp connection from: {}", connection.remoteSocketAddress.toString())
+		val inputStream = connection.getInputStream()
+
+		while (true) {
+			val payloadIdLenBuff = inputStream.readNBytes(4)
+			val payloadIdLen = ByteBuffer.allocate(4).put(payloadIdLenBuff).rewind().getInt()
+			val payloadId = connection.getInputStream().readNBytes(payloadIdLen)
+
+			val payloadLenByte = connection.getInputStream().readNBytes(4)
+			val payloadLen = ByteBuffer.allocate(4).put(payloadLenByte).rewind().getInt()
+			val payload = connection.getInputStream().readNBytes(payloadLen)
+
+			logger.info("got payload: {}, with len : {}", String(payloadId),payloadLen)
+
+			replyTo.tell(
+				ChunkServiceActor.PayloadData(
+					payloadId,
+					payload
+				)
 			)
-		)
-
-		return Behaviors.stopped()
+		}
 	}
-
 }

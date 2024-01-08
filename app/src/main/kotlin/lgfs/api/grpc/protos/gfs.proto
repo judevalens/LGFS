@@ -65,8 +65,8 @@ message Mutation {
   int32 serial = 3;
   MutationType type = 4;
   string mutationId = 5;
-  string primary = 6;
-  repeated string replicas = 7;
+  ServerAddress primary = 6;
+  repeated ServerAddress replicas = 7;
   int32 offset = 8;
   string clientId = 9;
 }

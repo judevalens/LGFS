@@ -124,6 +124,7 @@ class MasterServiceImpl(private val masterGfs: MasterApi) : MasterServiceGrpcKt.
 							.setHostName(lease.primary.hostName)
 							.setAkkaPort(lease.primary.akkaPort)
 							.setApiPort(lease.primary.apiPort)
+							.setDataPort(lease.primary.dataPort)
 							.build()
 					)
 					.addAllReplicas(gfsReplicas)

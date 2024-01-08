@@ -16,6 +16,7 @@ import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
 import java.io.IOException
+import java.io.InputStream
 import java.net.Socket
 import java.nio.ByteBuffer
 import java.nio.file.Files
@@ -34,14 +35,15 @@ class Client() {
 
 	private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 	private val masterAddress = "127.0.0.1"
-	private val testFilePath = "/home/jude/Documents/LGFS/.gitignore"
+	private val testFilePath = "/home/jude/Desktop/redis-stack-server-6.2.6-v9.focal.x86_64.tar.gz"
 	private var masterApiStub: MasterServiceGrpcKt.MasterServiceCoroutineStub
 	private var chunkApiStubs: HashMap<Gfs.ServerAddress, ChunkServiceGrpcKt.ChunkServiceCoroutineStub> = HashMap()
 	private val DATA_PORT = 9005
-	private val CHUNK_SIZE = 64 * 1000 * 1000
+	private val CHUNK_SIZE = 64 * 1000
 	private val tcpSockets = HashMap<Gfs.ServerAddress, Socket>()
 	private val chunksMap = HashMap<Long, Gfs.Chunk>()
 	private val PAYLOAD_LEN_FIELD = 4;
+	private val CLIENT_ID = "dev_client"
 
 	init {
 		logger.info("GFS client has been initialized")
@@ -120,13 +122,9 @@ class Client() {
 
 	private suspend fun uploadFile(file: File, chunks: List<Gfs.Chunk>) {
 		val nChunk = ceil(file.length() / CHUNK_SIZE.toDouble()).toInt()
-		logger.info(
-			"Upload {} chunks for file: {}", chunks.size, file.path
-		)
+		logger.info("Upload {} chunks for file: {}", chunks.size, file.path)
 		if (nChunk != chunks.size) {
-			logger.error(
-				"Inconsistent number of chunks, expected {}, have {}", nChunk, chunks.size
-			)
+			logger.error("Inconsistent number of chunks, expected {}, have {}", nChunk, chunks.size)
 			return
 		}
 		var batch = 0
@@ -137,109 +135,20 @@ class Client() {
 		for (i in 0 until nChunk) {
 			val chunk = chunks[i]
 			if (chunk.chunkIndex != i) {
-				logger.error(
-					"Chunk List is out of order, expected chunk index : {}, have: {}", i, chunk.chunkIndex
-				)
+				logger.error("Chunk List is out of order, expected chunk index : {}, have: {}", i, chunk.chunkIndex)
 				TODO()
 				break
 			}
 			batch++
 			chunkBatch.add(chunk)
 			if (batch == 5 || batch == nChunk) {
-				val leaseGrantRes = masterApiStub.getLease(
-					Gfs.LeaseGrantReq.newBuilder().addAllChunks(chunkBatch).build()
-				)
-				logger.info(
-					"received {} leases", leaseGrantRes.leasesList.size
-				)
-				val realChunkSize = min(
-					CHUNK_SIZE.toLong(), file.length() - CHUNK_SIZE * i
-				).toInt()
-				if (realChunkSize < CHUNK_SIZE) {
-					chunkBuffer = ByteArray(realChunkSize)
-				}
-				logger.info(
-					"real chunk size: {}", realChunkSize
-				)
-				val nBytes = withContext(Dispatchers.IO) {
-					inputStream.readNBytes(
-						chunkBuffer, 0, realChunkSize
-					)
-				}
-				logger.info(
-					"real chunk size: {}, read: {}, chunk hash: {}, lease size: {}",
-					realChunkSize,
-					nBytes,
-					"test hash",
-					leaseGrantRes.leasesList.size
-				)
-				if (realChunkSize != nBytes) {
-					logger.error(
-						"Read incorrect amount of data, expected {}, got {}", realChunkSize, nBytes
-					)
-					TODO()
-					break
-				}
+				val leaseGrantRes =
+					masterApiStub.getLease(Gfs.LeaseGrantReq.newBuilder().addAllChunks(chunkBatch).build())
+				logger.info("received {} leases", leaseGrantRes.leasesList.size)
+				logger.info("******************sending batch of: {} ******************\n", batch)
+				var k = i - batch
 
-				val chunkHash = HexFormat.of().formatHex(
-					getHash(
-						chunkBuffer, realChunkSize
-					)
-				)
-				logger.info(
-					"chunk hash: {}", chunkHash
-				)
-				mutationIds.add(chunkHash)
-				logger.info(
-					"real chunk size: {}, read: {}, chunk hash: {}, lease size: {}",
-					realChunkSize,
-					nBytes,
-					chunkHash,
-					leaseGrantRes.leasesList.size
-				)
-				leaseGrantRes.leasesList.forEach { lease ->
-					logger.info(
-						"{} is the primary chunk server for: chunk {} with index {}",
-						lease.primary,
-						chunkHash,
-						lease.chunk.chunkIndex
-					)
-					val chunkServerHostnames = ArrayList(lease.replicasList + lease.primary)
-					chunkServerHostnames.forEach { serverAddress ->
-						logger.info(
-							"sending packet to: {}", serverAddress
-						)
-						val socket = tcpSockets.getOrPut(serverAddress) {
-							Socket(
-								"127.0.0.1", DATA_PORT
-							)
-						}
-						try {
-							val packet = buildChunkPacket(
-								chunkBuffer, chunkHash.toByteArray()
-							)
-							logger.info(
-								"built packet, size: {}", packet.size
-							)
-							logger.info("done sending chunk")
-						} catch (exception: IOException) {
-							logger.error(exception.message)
-						}
-					}
-
-					val chunkApiStub = chunkApiStubs.getOrPut(lease.primary) { getChunkApiStub(lease.primary) }
-					try {
-						val res = chunkApiStub.addMutations(
-							Gfs.Mutations.newBuilder().addMutations(
-								Gfs.Mutation.newBuilder().setChunk(chunk).setType(Gfs.MutationType.Write).build()
-							).build()
-						)
-						logger.info("res status: {}", res.status)
-					} catch (status: StatusException) {
-						logger.error("Failed to send chunk mutations: {}", status.message)
-					}
-
-				}
+				sendBatch(leaseGrantRes.leasesList, file, inputStream, chunkBatch, i)
 
 				chunkBatch.clear()
 				batch = 0
@@ -249,12 +158,93 @@ class Client() {
 
 	private fun buildChunkPacket(payload: ByteArray, payloadHash: ByteArray): ByteArray {
 
-		val payloadLen = (payload.size + payloadHash.size)
-
+		val payloadLen = payload.size
+		val payLoadHashLen =  payloadHash.size
 		val payloadLenBuff = ByteBuffer.allocate(4).putInt(payloadLen).array()
-
-		return payloadLenBuff + payloadHash + payload
+		val payloadHashBuff = ByteBuffer.allocate(4).putInt(payLoadHashLen).array()
+		return payloadHashBuff + payloadHash + payloadLenBuff + payload
 	}
+
+	private suspend fun sendBatch(
+		leases: List<Gfs.Lease>,
+		file: File,
+		inputStream: InputStream,
+		chunkBatch: List<Gfs.Chunk>,
+		chunkIndex: Int,
+	) {
+		var chunkBuffer = ByteArray(CHUNK_SIZE)
+
+		val k = chunkIndex - chunkBatch.size
+
+		for (i in chunkBatch.indices) {
+			val lease = leases[i]
+			val chunk = chunkBatch[i]
+
+			val realChunkSize = min(CHUNK_SIZE.toLong(), file.length() - CHUNK_SIZE * (k + i)).toInt()
+
+			if (realChunkSize < CHUNK_SIZE) {
+				chunkBuffer = ByteArray(realChunkSize)
+			}
+			logger.info("real chunk size: {}", realChunkSize)
+			val nBytes = withContext(Dispatchers.IO) {
+				inputStream.readNBytes(
+					chunkBuffer, 0, realChunkSize
+				)
+			}
+
+			if (realChunkSize != nBytes) {
+				logger.error(
+					"Read incorrect amount of data, expected {}, got {}", realChunkSize, nBytes
+				)
+				TODO()
+				return
+			}
+
+			val chunkHash = HexFormat.of().formatHex(getHash(chunkBuffer, realChunkSize))
+
+			logger.info(
+				"{} is the primary chunk server for: chunk {} with index {}",
+				lease.primary.hostName,
+				chunkHash.slice(0..8),
+				lease.chunk.chunkIndex
+			)
+
+			val chunkServerHostnames = ArrayList(lease.replicasList + lease.primary)
+			chunkServerHostnames.forEach { serverAddress ->
+				logger.info("sending packet {}, to: {}", chunkHash.slice(0..8), serverAddress.hostName)
+				val socket = tcpSockets.getOrPut(serverAddress) { Socket("127.0.0.1", serverAddress.dataPort) }
+				try {
+					val packet = buildChunkPacket(chunkBuffer, chunkHash.toByteArray())
+					socket.getOutputStream().write(packet)
+					logger.info("done sending chunk")
+				} catch (exception: IOException) {
+					logger.error(exception.message)
+				}
+			}
+
+			val chunkApiStub = chunkApiStubs.getOrPut(lease.primary) { getChunkApiStub(lease.primary) }
+			try {
+				val res = chunkApiStub.addMutations(
+					Gfs.Mutations.newBuilder().addMutations(
+						Gfs.Mutation.newBuilder()
+							.setClientId(CLIENT_ID)
+							.setMutationId(chunkHash)
+							.setChunk(chunk)
+							.setType(Gfs.MutationType.Write)
+							.setPrimary(lease.primary)
+							.addAllReplicas(lease.replicasList)
+							.setSerial(0)
+							.setOffset(0)
+							.build()
+					).build()
+				)
+				logger.info("res status: {}", res.status)
+			} catch (status: StatusException) {
+				logger.error("Failed to send chunk mutations: {}", status.message)
+			}
+		}
+	}
+
 
 	private fun getHash(buffer: ByteArray, len: Int): ByteArray {
 		val md = MessageDigest.getInstance("SHA-256")

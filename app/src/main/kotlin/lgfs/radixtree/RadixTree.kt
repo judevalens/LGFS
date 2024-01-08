@@ -7,10 +7,10 @@ import java.util.*
 class RadixTree<K, V>(private var key: Key<K>, private var value: V, private val radix: Int) {
     private var root: Node<K, V> = Node(key, value)
     fun add(key: Key<K>, value: V, update: Boolean): Boolean {
-        println("adding: ${key.toString()}")
+        ////println("adding: ${key.toString()}")
         if (!update) {
             if (find(key) != null) {
-                println("found value ${find(key)}")
+                ////println("found value ${find(key)}")
                 return false
             }
         }
@@ -22,7 +22,7 @@ class RadixTree<K, V>(private var key: Key<K>, private var value: V, private val
                 val currentNode = nodesStack.remove()
                 currentNode.lock.writeLock()
                 currentNode.lock.lockDelete()
-                println("got lock")
+                //println("got lock")
                 lockStack.add(currentNode)
                 try {
                     val l: Int = currentNode.key.length()
@@ -34,13 +34,13 @@ class RadixTree<K, V>(private var key: Key<K>, private var value: V, private val
                         val suffixKeyRange = i..<r
                         val currentNodePrefixRange = 0..<j
 
-                        println(
+                        /*println(
                             "prefix: ${currentNode.key.sliceKey(currentNodePrefixRange)}, currentNode suffix: ${
                                 currentNode.key.sliceKey(
                                     currentNodeSuffixRange
                                 )
                             }, suffix: ${key.sliceKey(suffixKeyRange)}"
-                        )
+                        )*/
                         if (currentNodeSuffixRange.isEmpty() && suffixKeyRange.isEmpty()) {
                             currentNode.value = value
                         } else if (!currentNodeSuffixRange.isEmpty() && !suffixKeyRange.isEmpty()) {
@@ -84,7 +84,7 @@ class RadixTree<K, V>(private var key: Key<K>, private var value: V, private val
             root.nodes.add(Node(key, value))
         } finally {
             for (lock in lockStack) {
-                println("releasing locks")
+                //println("releasing locks")
                 lock.lock.unlockDelete()
             }
         }
@@ -133,7 +133,7 @@ class RadixTree<K, V>(private var key: Key<K>, private var value: V, private val
                 if (i == key.length()) {
                     currentNode.value = null
                     val parent: Node<K, V> = parentsStack.pop()
-                    println("deleting node: " + key + " | parent key: " + parent.key)
+                    //println("deleting node: " + key + " | parent key: " + parent.key)
                     if (parent.nodes.size == 1 && parent.value == null) {
                         val onlyChild = parent.nodes.remove()
                         System.out.printf(
@@ -164,10 +164,10 @@ class RadixTree<K, V>(private var key: Key<K>, private var value: V, private val
         if (node.value == null && !node.nodes.isEmpty()) {
             return
         }
-        println("prefix: $prefix")
-        println("suffix: ${node.key}")
-        println(prefix.toString() + node.key.toString() + " | value: " + node.value)
-        println("*************************")
+        //println("prefix: $prefix")
+        //println("suffix: ${node.key}")
+        //println(prefix.toString() + node.key.toString() + " | value: " + node.value)
+        //println("*************************")
     }
 
     private fun keyCompare(a: ByteArray, b: ByteArray): Int {

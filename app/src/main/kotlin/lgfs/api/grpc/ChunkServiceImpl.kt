@@ -9,6 +9,7 @@ import lgfs.api.ChunkAPI
 import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.FileProtocol
 import lgfs.network.Secrets
+import lgfs.network.ServerAddress
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
@@ -17,6 +18,7 @@ class ChunkServiceImpl(private val chunkAPI: ChunkAPI) : ChunkServiceGrpcKt.Chun
 	val server: Server = ServerBuilder.forPort(Secrets.getSecrets().getServerAddress().apiPort)
 		.intercept(TagInterceptor(context))
 		.addService(this)
+		.intercept(ExceptionInterceptor(context))
 		.build()
 
 	fun startServer() {
@@ -25,10 +27,16 @@ class ChunkServiceImpl(private val chunkAPI: ChunkAPI) : ChunkServiceGrpcKt.Chun
 
 	override suspend fun addMutations(request: Gfs.Mutations): Gfs.Status {
 		val reqId = TagInterceptor.getRequestId()
-		logger.info("req id: {}, Processing add mutations request", reqId)
+		logger.info("req id: {}, Processing add mutations request 2", reqId)
 		val gfsMutations = ArrayList<FileProtocol.Mutation>()
-		request.mutationsList.forEach {
 
+		request.mutationsList.forEach {
+			val replicaAddresses = ArrayList<ServerAddress>()
+			it.replicasList.forEach { addr ->
+				replicaAddresses.add(
+					ServerAddress(addr.hostName, addr.akkaPort, addr.apiPort, addr.dataPort),
+				)
+			}
 			gfsMutations.add(
 				FileProtocol.Mutation(
 					it.clientId,
@@ -37,18 +45,18 @@ class ChunkServiceImpl(private val chunkAPI: ChunkAPI) : ChunkServiceGrpcKt.Chun
 						it.chunk.chunkIndex
 					),
 					it.mutationId,
-					it.primary,
-					it.replicasList,
+					ServerAddress(it.primary.hostName, it.primary.akkaPort, it.primary.apiPort, it.primary.dataPort),
+					replicaAddresses,
 					it.serial,
 					it.offset
 				)
 			)
 		}
-		chunkAPI.addMutations(gfsMutations)
+		chunkAPI.addMutations(reqId, gfsMutations)
+		logger.info("made api call to add mutations")
 		return Gfs.Status.newBuilder()
-			.setStatus(Status.OK.description)
+			.setStatus(Status.OK.code.toString())
 			.setCode(Status.OK.code.value())
 			.build()
 	}
-
 }

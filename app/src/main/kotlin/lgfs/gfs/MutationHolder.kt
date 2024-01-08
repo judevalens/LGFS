@@ -1,5 +1,6 @@
 package lgfs.gfs
 
+import lgfs.network.ServerAddress
 import java.nio.ByteBuffer
 import java.util.*
 
@@ -34,7 +35,7 @@ class MutationHolder(private val chunkHandle: Long) {
 		clientMutations[mutation.clientId]!!.add(updatedMutation)
 	}
 
-	fun commitMutation(clientId: String, chunkBlocks: HashMap<String, ChunkData>): Boolean {
+	fun commitMutation(clientId: String, chunkBlocks: HashMap<String, ChunkData>, replicas: List<ServerAddress>): Boolean {
 		if ((lease == null) || isLeaseValid(lease!!)) return TODO()
 		// TODO check that this client has pending mutations
 		val mutations = clientMutations[clientId]!!
