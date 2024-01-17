@@ -26,8 +26,10 @@ class TCPConnectionHandler(
 	@OptIn(DelicateCoroutinesApi::class)
 	 fun startDataServer() {
 		val job = GlobalScope.launch {
+
 			val server = ServerSocket(Secrets.getSecrets().getServerAddress().dataPort)
 			while (true) {
+				logger.info("Waiting for connection to chunk data port")
 				val connection = server.accept()
 				launch {
 					listening(connection)

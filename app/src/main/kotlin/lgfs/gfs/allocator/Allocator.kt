@@ -4,10 +4,13 @@ import lgfs.gfs.ChunkMetadata
 import lgfs.gfs.ChunkServerState
 import lgfs.gfs.FileMetadata
 import lgfs.gfs.Lease
+import lgfs.network.Secrets
 import lgfs.network.ServerAddress
+import java.nio.file.Files
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.atomic.AtomicLong
+import kotlin.io.path.Path
 import kotlin.math.ceil
 
 class Allocator {
@@ -22,6 +25,7 @@ class Allocator {
 	companion object {
 		const val CHUNK_SIZE = 64 * 1000
 		val LEASE_DURATION = Duration.ofMinutes(1).toMillis()
+
 	}
 
 	/**

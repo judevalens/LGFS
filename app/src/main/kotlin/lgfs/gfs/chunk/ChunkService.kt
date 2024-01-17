@@ -8,12 +8,23 @@ import lgfs.network.Secrets
 import lgfs.network.ServerAddress
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
+import java.nio.file.Files
+import kotlin.io.path.Path
 
 class ChunkService {
 	private val leases = HashMap<Long, Lease>()
 	private val mutationHolders = HashMap<Long, MutationHolder>()
 	private val mutationData = HashMap<String, ChunkData>()
 	private val logger: Logger = LoggerFactory.getLogger(this::class.java)
+
+	companion object {
+		private const val ROOT_PATH = "/gfs"
+		val ROOT_CHUNK_PATH = Path(ROOT_PATH, Secrets.getSecrets().getHostName())
+	}
+
+	init {
+		Files.createDirectories(ROOT_CHUNK_PATH)
+	}
 
 	fun addMutations(mutations: List<FileProtocol.Mutation>): Boolean {
 		mutations.forEach { mutation ->

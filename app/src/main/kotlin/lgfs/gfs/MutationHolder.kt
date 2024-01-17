@@ -13,8 +13,7 @@ class MutationHolder(private val chunkHandle: Long) {
 	private val clientMutations = HashMap<String, MutableList<FileProtocol.Mutation>>()
 	private lateinit var history: MutableList<ChunkFile.Memento>
 
-	private val originalChunk = ChunkFile(hexHandle(chunkHandle))
-	val previousState = originalChunk.save()
+	private lateinit var originalChunk : ChunkFile
 
 	fun addMutation(mutation: FileProtocol.Mutation, setSerial: Boolean) {
 		if (!clientMutations.containsKey("clientId")) {

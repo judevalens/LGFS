@@ -20,6 +20,7 @@ services:
       - type: bind
         source: "./app/src/main/resources/test.txt"
         target: "/app/conf/test.txt"
+      - gfs:/gfs/
     profiles: [ "master","all" ]
 
   chunk-1:
@@ -40,6 +41,7 @@ services:
       - type: bind
         source: "./app/src/main/resources/chunk.conf"
         target: "/app/conf/application.conf"
+      - gfs:/gfs/
     profiles: [ "chunk","all" ]
 
   chunk-2:
@@ -59,6 +61,7 @@ services:
       - type: bind
         source: "./app/src/main/resources/chunk.conf"
         target: "/app/conf/application.conf"
+      - gfs:/gfs/
     profiles: [ "chunk","all" ]
 
   chunk-3:
@@ -99,6 +102,10 @@ services:
         source: "./app/src/main/resources/chunk.conf"
         target: "/app/conf/application.conf"
     profiles: [ "chunk","all" ]
+
+
+volumes:
+  gfs:
 
 #networks:
 #  static-network:

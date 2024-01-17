@@ -130,8 +130,7 @@ class Client() {
 		var batch = 0
 		val chunkBatch = ArrayList<Gfs.Chunk>()
 		val inputStream = file.inputStream()
-		var chunkBuffer = ByteArray(CHUNK_SIZE)
-		val mutationIds = ArrayList<String>()
+
 		for (i in 0 until nChunk) {
 			val chunk = chunks[i]
 			if (chunk.chunkIndex != i) {
