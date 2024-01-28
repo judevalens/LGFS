@@ -33,8 +33,11 @@ interface FileProtocol {
 		val offset: Int
 	) : FileProtocol
 
-	class CommitMutation(val clientId: String, val chunkHandle: Long, val replicas: List<ServerAddress>) : FileProtocol
-	class Mutations(val reqId: String,val mutations: List<Mutation>) : FileProtocol
+	class CommitMutationReq(val reqId: String, val clientId: String, val chunkHandle: Long, val replicas: List<ServerAddress>) :
+		FileProtocol
+
+	class CommitMutationReqs(val reqId: String, val commitReqs: List<CommitMutationReq>) : FileProtocol
+	class AddMutationsReq(val reqId: String, val mutations: List<Mutation>, val replyTo: ActorRef<FileProtocol>) : FileProtocol
 	class LeaseGrantReq(
 		val reqId: String, val chunkMetadataList: List<ChunkMetadata>, val replyTo: ActorRef<FileProtocol>
 	) : FileProtocol

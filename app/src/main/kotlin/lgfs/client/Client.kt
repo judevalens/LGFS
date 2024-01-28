@@ -11,7 +11,12 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import lgfs.gfs.FileMetadata
-import org.apache.commons.cli.*
+import org.apache.commons.cli.CommandLineParser
+import org.apache.commons.cli.DefaultParser
+import org.apache.commons.cli.HelpFormatter
+import org.apache.commons.cli.Option
+import org.apache.commons.cli.Options
+import org.apache.commons.cli.ParseException
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.io.File
@@ -23,7 +28,8 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.security.DigestException
 import java.security.MessageDigest
-import java.util.*
+import java.util.Collections
+import java.util.HexFormat
 import kotlin.math.ceil
 import kotlin.math.min
 
@@ -44,6 +50,26 @@ class Client() {
 	private val chunksMap = HashMap<Long, Gfs.Chunk>()
 	private val PAYLOAD_LEN_FIELD = 4;
 	private val CLIENT_ID = "dev_client"
+
+	data class ChunkMutation(val payloadId: ByteArray, val packet: ByteArray, val lease: Gfs.Lease) {
+		override fun equals(other: Any?): Boolean {
+			if (this === other) return true
+			if (javaClass != other?.javaClass) return false
+
+			other as ChunkMutation
+
+			if (!payloadId.contentEquals(other.payloadId)) return false
+			if (!packet.contentEquals(other.packet)) return false
+
+			return true
+		}
+
+		override fun hashCode(): Int {
+			var result = payloadId.contentHashCode()
+			result = 31 * result + packet.contentHashCode()
+			return result
+		}
+	}
 
 	init {
 		logger.info("GFS client has been initialized")
@@ -128,7 +154,7 @@ class Client() {
 			return
 		}
 		var batch = 0
-		val chunkBatch = ArrayList<Gfs.Chunk>()
+		val chunkBatch = HashMap<Long, Gfs.Chunk>()
 		val inputStream = file.inputStream()
 
 		for (i in 0 until nChunk) {
@@ -139,10 +165,9 @@ class Client() {
 				break
 			}
 			batch++
-			chunkBatch.add(chunk)
+			chunkBatch[chunk.chunkHandle] = chunk
 			if (batch == 5 || batch == nChunk) {
-				val leaseGrantRes =
-					masterApiStub.getLease(Gfs.LeaseGrantReq.newBuilder().addAllChunks(chunkBatch).build())
+				val leaseGrantRes = masterApiStub.getLease(Gfs.LeaseGrantReq.newBuilder().addAllChunks(chunkBatch.values).build())
 				logger.info("received {} leases", leaseGrantRes.leasesList.size)
 				logger.info("******************sending batch of: {} ******************\n", batch)
 				var k = i - batch
@@ -158,7 +183,7 @@ class Client() {
 	private fun buildChunkPacket(payload: ByteArray, payloadHash: ByteArray): ByteArray {
 
 		val payloadLen = payload.size
-		val payLoadHashLen =  payloadHash.size
+		val payLoadHashLen = payloadHash.size
 		val payloadLenBuff = ByteBuffer.allocate(4).putInt(payloadLen).array()
 		val payloadHashBuff = ByteBuffer.allocate(4).putInt(payLoadHashLen).array()
 		return payloadHashBuff + payloadHash + payloadLenBuff + payload
@@ -168,17 +193,21 @@ class Client() {
 		leases: List<Gfs.Lease>,
 		file: File,
 		inputStream: InputStream,
-		chunkBatch: List<Gfs.Chunk>,
+		chunkBatch: HashMap<Long, Gfs.Chunk>,
 		chunkIndex: Int,
 	) {
 		var chunkBuffer = ByteArray(CHUNK_SIZE)
 
 		val k = chunkIndex - chunkBatch.size
+		val commitReqs = ArrayList<Gfs.CommitMutationReq>()
+		val chunkServers = HashMap<Gfs.ServerAddress, HashSet<ChunkMutation>>();
+		val gfsMutations = HashMap<Gfs.ServerAddress, Gfs.Mutations>()
+		val gfsCommitRequests = HashMap<Gfs.ServerAddress, Gfs.CommitMutationReqs>()
 
-		for (i in chunkBatch.indices) {
+		for (i in leases.indices) {
 			val lease = leases[i]
-			val chunk = chunkBatch[i]
-
+			val chunk = chunkBatch[lease.chunk.chunkHandle]!!
+			//primaryChunkServers.add(lease.primary)
 			val realChunkSize = min(CHUNK_SIZE.toLong(), file.length() - CHUNK_SIZE * (k + i)).toInt()
 
 			if (realChunkSize < CHUNK_SIZE) {
@@ -186,15 +215,11 @@ class Client() {
 			}
 			logger.info("real chunk size: {}", realChunkSize)
 			val nBytes = withContext(Dispatchers.IO) {
-				inputStream.readNBytes(
-					chunkBuffer, 0, realChunkSize
-				)
+				inputStream.readNBytes(chunkBuffer, 0, realChunkSize)
 			}
 
 			if (realChunkSize != nBytes) {
-				logger.error(
-					"Read incorrect amount of data, expected {}, got {}", realChunkSize, nBytes
-				)
+				logger.error("Read incorrect amount of data, expected {}, got {}", realChunkSize, nBytes)
 				TODO()
 				return
 			}
@@ -209,37 +234,65 @@ class Client() {
 			)
 
 			val chunkServerHostnames = ArrayList(lease.replicasList + lease.primary)
+			val packet = buildChunkPacket(chunkBuffer, chunkHash.toByteArray())
+			val chunkMutation = ChunkMutation(chunkHash.toByteArray(), packet, lease)
+
 			chunkServerHostnames.forEach { serverAddress ->
-				logger.info("sending packet {}, to: {}", chunkHash.slice(0..8), serverAddress.hostName)
-				val socket = tcpSockets.getOrPut(serverAddress) { Socket("127.0.0.1", serverAddress.dataPort) }
-				try {
-					val packet = buildChunkPacket(chunkBuffer, chunkHash.toByteArray())
-					socket.getOutputStream().write(packet)
-					logger.info("done sending chunk")
-				} catch (exception: IOException) {
-					logger.error(exception.message)
+				if (chunkServers.containsKey(serverAddress)) {
+					chunkServers[serverAddress]!!.add(chunkMutation)
+				} else {
+					chunkServers[serverAddress] = HashSet(Collections.singleton(chunkMutation))
 				}
 			}
 
-			val chunkApiStub = chunkApiStubs.getOrPut(lease.primary) { getChunkApiStub(lease.primary) }
+			if (!gfsMutations.containsKey(lease.primary)) {
+
+				gfsMutations[lease.primary] = Gfs.Mutations.newBuilder().build()
+				gfsCommitRequests[lease.primary] = Gfs.CommitMutationReqs.newBuilder().build()
+			}
+			gfsMutations[lease.primary]!!.mutationsList.add(
+				Gfs.Mutation.newBuilder()
+					.setClientId(CLIENT_ID)
+					.setMutationId(chunkHash)
+					.setChunk(chunk)
+					.setType(Gfs.MutationType.Write)
+					.setPrimary(lease.primary)
+					.addAllReplicas(lease.replicasList)
+					.setSerial(0)
+					.setOffset(0)
+					.build()
+			)
+
+			gfsCommitRequests[lease.primary]!!.commitsList.add(
+				Gfs.CommitMutationReq.newBuilder()
+					.setClientId(CLIENT_ID)
+					.setChunkHandle(chunk.chunkHandle)
+					.addAllReplicas(lease.replicasList)
+					.build()
+			)
+
+		}
+
+		val compositePackets = HashMap<HashSet<ChunkMutation>, ByteArray>()
+		chunkServers.forEach {
+			val serverAddress = it.key
+			val mutations = it.value
+			val socket = tcpSockets.getOrPut(serverAddress) { Socket("127.0.0.1", serverAddress.dataPort) }
 			try {
-				val res = chunkApiStub.addMutations(
-					Gfs.Mutations.newBuilder().addMutations(
-						Gfs.Mutation.newBuilder()
-							.setClientId(CLIENT_ID)
-							.setMutationId(chunkHash)
-							.setChunk(chunk)
-							.setType(Gfs.MutationType.Write)
-							.setPrimary(lease.primary)
-							.addAllReplicas(lease.replicasList)
-							.setSerial(0)
-							.setOffset(0)
-							.build()
-					).build()
-				)
-				logger.info("res status: {}", res.status)
-			} catch (status: StatusException) {
-				logger.error("Failed to send chunk mutations: {}", status.message)
+				var packet = compositePackets[mutations]
+				if (compositePackets.contains(mutations)) {
+					packet = buildCompositePacket(mutations).first
+					compositePackets[mutations] = packet
+				}
+				socket.getOutputStream().write(packet!!)
+
+				if (gfsMutations.containsKey(serverAddress)) {
+					val chunkApiStub = chunkApiStubs.getOrPut(serverAddress) { getChunkApiStub(serverAddress) }
+					val res = chunkApiStub.addMutations(gfsMutations[serverAddress]!!)
+				}
+				logger.info("done sending chunk")
+			} catch (exception: IOException) {
+				logger.error(exception.message)
 			}
 		}
 	}
@@ -261,9 +314,44 @@ class Client() {
 		return ByteArray(0)
 	}
 
+	private fun buildCompositeMutation(packets: HashSet<ChunkMutation>) {
+		val mutations = Gfs.Mutations.newBuilder();
+		packets.forEach {
+			mutations.addMutations(
+				Gfs.Mutation.newBuilder()
+					.setClientId(CLIENT_ID)
+					.setMutationId(HexFormat.of().formatHex(it.payloadId))
+					.setChunk(it.lease.chunk)
+					.setType(Gfs.MutationType.Write)
+					.setPrimary(it.lease.primary)
+					.addAllReplicas(it.lease.replicasList)
+					.setSerial(0).setOffset(0).build()
+			).build()
+		}
+	}
+
+	private fun buildCompositePacket(packets: HashSet<ChunkMutation>): Pair<ByteArray, Gfs.Mutations> {
+		val numPacket = packets.size.toShort()
+		val packetBuff = ByteBuffer.allocate(2).putShort(numPacket).array()
+		val mutations = Gfs.Mutations.newBuilder();
+		packets.forEach {
+			packetBuff.plus(it.packet)
+			mutations.addMutations(
+				Gfs.Mutation.newBuilder()
+					.setClientId(CLIENT_ID)
+					.setMutationId(HexFormat.of().formatHex(it.payloadId))
+					.setChunk(it.lease.chunk)
+					.setType(Gfs.MutationType.Write)
+					.setPrimary(it.lease.primary)
+					.addAllReplicas(it.lease.replicasList)
+					.setSerial(0).setOffset(0).build()
+			).build()
+		}
+		return Pair(packetBuff, mutations.build())
+	}
+
 	private fun getChunkApiStub(serverAddress: Gfs.ServerAddress): ChunkServiceGrpcKt.ChunkServiceCoroutineStub {
-		val chunkStubChannel =
-			ManagedChannelBuilder.forAddress("127.0.0.1", serverAddress.apiPort).usePlaintext().build()
+		val chunkStubChannel = ManagedChannelBuilder.forAddress("127.0.0.1", serverAddress.apiPort).usePlaintext().build()
 		return ChunkServiceGrpcKt.ChunkServiceCoroutineStub(chunkStubChannel)
 	}
 
@@ -272,13 +360,11 @@ class Client() {
 
 		val options = Options();
 
-		val createFile =
-			Option.builder("c").longOpt("create").argName("path").numberOfArgs(Option.UNLIMITED_VALUES).hasArgs()
-				.desc("create a new with the specified path").build()
+		val createFile = Option.builder("c").longOpt("create").argName("path").numberOfArgs(Option.UNLIMITED_VALUES).hasArgs()
+			.desc("create a new with the specified path").build()
 
-		val deleteFile =
-			Option.builder("d").longOpt("delete").argName("path").numberOfArgs(Option.UNLIMITED_VALUES).hasArgs()
-				.desc("Delete the file at the provided path").build()
+		val deleteFile = Option.builder("d").longOpt("delete").argName("path").numberOfArgs(Option.UNLIMITED_VALUES).hasArgs()
+			.desc("Delete the file at the provided path").build()
 
 
 

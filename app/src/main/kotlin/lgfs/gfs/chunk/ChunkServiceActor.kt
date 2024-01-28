@@ -11,7 +11,8 @@ import org.slf4j.LoggerFactory
 import java.net.Socket
 
 class ChunkServiceActor(context: ActorContext<FileProtocol>) : AbstractBehavior<FileProtocol>(context) {
-	private val chunkService = ChunkService()
+	private val chunkAllocator = context.spawnAnonymous(Allocator.create())
+	private val chunkService = ChunkService(chunkAllocator, context.system)
 	private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
 	class HandleIncomingTCPConnection(val socket: Socket) : FileProtocol
@@ -32,21 +33,22 @@ class ChunkServiceActor(context: ActorContext<FileProtocol>) : AbstractBehavior<
 
 	override fun createReceive(): Receive<FileProtocol> {
 		return newReceiveBuilder()
-			.onMessage(FileProtocol.Mutations::class.java, this::onMutations)
-			.onMessage(FileProtocol.CommitMutation::class.java, this::onCommitMutation)
+			.onMessage(FileProtocol.AddMutationsReq::class.java, this::onMutations)
+			.onMessage(FileProtocol.CommitMutationReqs::class.java, this::onCommitMutationReqs)
 			.onMessage(FileProtocol.LeaseGrantRes::class.java, this::onLeaseGrant)
 			.onMessage(PayloadData::class.java, this::onPayloadData)
 			.build()
 	}
 
-	private fun onMutations(msg: FileProtocol.Mutations): Behavior<FileProtocol> {
+	private fun onMutations(msg: FileProtocol.AddMutationsReq): Behavior<FileProtocol> {
 		logger.info("req id: {}, Received mutations from client with id: {}", msg.reqId, msg.mutations[0].clientId)
 		chunkService.addMutations(msg.mutations)
 		return Behaviors.same()
 	}
 
-	private fun onCommitMutation(msg: FileProtocol.CommitMutation): Behavior<FileProtocol> {
-		chunkService.commitMutation(msg.clientId, msg.chunkHandle, msg.replicas)
+	private fun onCommitMutationReqs(msg: FileProtocol.CommitMutationReqs): Behavior<FileProtocol> {
+		logger.info("req id: {}, Received commit mutation request from client", msg.reqId)
+		chunkService.commitMutations(msg)
 		return Behaviors.same()
 	}
 

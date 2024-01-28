@@ -59,4 +59,26 @@ class ChunkServiceImpl(private val chunkAPI: ChunkAPI) : ChunkServiceGrpcKt.Chun
 			.setCode(Status.OK.code.value())
 			.build()
 	}
+
+	override suspend fun commitMutations(request: Gfs.CommitMutationReqs): Gfs.Status {
+		val reqId = TagInterceptor.getRequestId()
+		logger.info("req id: {}, Processing commit mutations request 2", reqId)
+
+		val commits = ArrayList<FileProtocol.CommitMutationReq>()
+
+		request.commitsList.forEach { commitReq ->
+			val replicas = ArrayList<ServerAddress>()
+			commitReq.replicasList.forEach { addr ->
+				replicas.add(ServerAddress(addr.hostName, addr.akkaPort, addr.apiPort, addr.dataPort))
+			}
+			commits.add(FileProtocol.CommitMutationReq(reqId, commitReq.clientId, commitReq.chunkHandle, replicas))
+		}
+
+		chunkAPI.commitMutations(reqId, commits)
+
+		return Gfs.Status.newBuilder()
+			.setStatus(Status.OK.code.toString())
+			.setCode(Status.OK.code.value())
+			.build()
+	}
 }

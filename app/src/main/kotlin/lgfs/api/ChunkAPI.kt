@@ -12,10 +12,21 @@ class ChunkAPI(private val chunkService: ActorRef<FileProtocol>, private val sys
 	private val logger: org.slf4j.Logger = LoggerFactory.getLogger(this::class.java)
 
 	fun addMutations(reqId: String, mutations: List<FileProtocol.Mutation>) {
-			logger.info("Send add mutation msg to chunkService actor")
-			val	 res: CompletionStage<FileProtocol> = AskPattern.ask(
+		logger.info("reqId: {}, Sending add mutation msg to chunkService actor", reqId)
+		val res: CompletionStage<FileProtocol> = AskPattern.ask(
 			chunkService, {
-				FileProtocol.Mutations(reqId, mutations)
+				FileProtocol.AddMutationsReq(reqId, mutations,it)
+			},
+			Duration.ofSeconds(100000),
+			system.scheduler()
+		)
+	}
+
+	suspend fun commitMutations(reqId: String, commits: List<FileProtocol.CommitMutationReq>) {
+		logger.info("reqId: {}, Sending commit mutation msg to chunkService actor", reqId)
+		val res: CompletionStage<FileProtocol> = AskPattern.ask(
+			chunkService, {
+				FileProtocol.CommitMutationReqs(reqId, commits)
 			},
 			Duration.ofSeconds(100000),
 			system.scheduler()
