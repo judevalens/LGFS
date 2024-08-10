@@ -1,5 +1,6 @@
 package lgfs.gfs
 
+import lgfs.gfs.chunk.Allocator
 import utils.radixtree.Key
 import lgfs.radixtree.RadixTree
 import java.util.concurrent.atomic.AtomicLong
@@ -27,8 +28,8 @@ class FileSystem {
         radixTree.printTree()
     }
 
-    fun attachServerToChunk(serverHostName: String, chunkHandle: Long): Boolean {
-        val filePath = chunksLookupTable[chunkHandle]
+    fun attachServerToChunk(serverHostName: String, chunk: Allocator.ChunkEntry): Boolean {
+        val filePath = chunksLookupTable[chunk.chunkIndex]
         filePath?.let {
             val file = radixTree.find(Key.getStringKey(filePath))
             file?.let {

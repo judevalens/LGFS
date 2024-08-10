@@ -4,6 +4,7 @@ import akka.actor.typed.ActorRef
 import akka.actor.typed.ActorSystem
 import akka.actor.typed.javadsl.AskPattern
 import lgfs.gfs.FileProtocol
+import lgfs.gfs.chunk.Command
 import org.slf4j.LoggerFactory
 import java.time.Duration
 import java.util.concurrent.CompletionStage
@@ -22,9 +23,9 @@ class ChunkAPI(private val chunkService: ActorRef<FileProtocol>, private val sys
 		)
 	}
 
-	suspend fun commitMutations(reqId: String, commits: List<FileProtocol.CommitMutationReq>) {
+	suspend fun commitMutations(reqId: String, commits: List<Command.CommitMutationReq>) {
 		logger.info("reqId: {}, Sending commit mutation msg to chunkService actor", reqId)
-		val res: CompletionStage<FileProtocol> = AskPattern.ask(
+		val res: CompletionStage<Command> = AskPattern.ask(
 			chunkService, {
 				FileProtocol.CommitMutationReqs(reqId, commits)
 			},

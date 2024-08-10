@@ -14,9 +14,9 @@ import org.slf4j.LoggerFactory
 fun main() {
     val loggerContext: LoggerContext = LoggerFactory.getILoggerFactory() as LoggerContext
     val nettyLogger: Logger = loggerContext.getLogger("io.grpc.netty")
-    nettyLogger.setLevel(Level.INFO)
+    nettyLogger.level = Level.INFO
     val rootLogger = loggerContext.getLogger(Logger.ROOT_LOGGER_NAME)
-    rootLogger.setLevel(Level.INFO)
+    rootLogger.level = Level.INFO
     if (System.getenv()["NODE_TYPE"].equals("server")) {
         runBlocking {
             val manager = Manager.launch()

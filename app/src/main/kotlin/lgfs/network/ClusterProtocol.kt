@@ -5,6 +5,7 @@ import akka.cluster.ClusterEvent
 import com.fasterxml.jackson.annotation.JsonCreator
 import lgfs.gfs.ChunkServerState
 import lgfs.gfs.FileProtocol
+import lgfs.gfs.chunk.Allocator
 
 interface ClusterProtocol {
     class Handshake(listing: Receptionist.Listing) : ClusterProtocol,
@@ -22,7 +23,7 @@ interface ClusterProtocol {
 
     class ChunkInventory @JsonCreator constructor(
         val serverHostName: String,
-        val chunkIds: MutableList<Long>
+        val chunksInventory: Allocator.ChunkInventoryList
     ) : ClusterProtocol,
         JsonSerializable
 

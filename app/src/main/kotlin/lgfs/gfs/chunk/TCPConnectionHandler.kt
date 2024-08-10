@@ -57,13 +57,6 @@ class TCPConnectionHandler(
 				logger.info("got payload: {}, with len : {}", String(payloadId), payloadLen)
 			}
 
-
-			replyTo.tell(
-				ChunkServiceActor.PayloadData(
-					payloadId,
-					payload
-				)
-			)
 		}
 	}
 }

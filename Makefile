@@ -13,7 +13,7 @@ build-cluster: build-dist build-image cluster-up
 
 start-one: build-image
 	docker compose stop master chunk-1
-	docker compose up master chunk-1 chunk-2
+	docker compose up master chunk-1
 
 
 reUp-one: build-dist start-one

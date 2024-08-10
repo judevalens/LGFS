@@ -17,7 +17,7 @@ plugins {
     // Apply the org.jetbrains.kotlin.jvm Plugin to add support for Kotlin.
     id("org.jetbrains.kotlin.jvm") version "1.9.10"
     id("com.google.protobuf") version "0.9.4"
-
+    idea
     `java-library`
     // Apply the application plugin to add support for building a CLI application in Java.
     application
@@ -30,6 +30,12 @@ repositories {
         url = uri("https://repo.akka.io/maven")
     }
     google()
+}
+idea {
+    module {
+        isDownloadJavadoc = true
+        isDownloadSources = true
+    }
 }
 
 dependencies {

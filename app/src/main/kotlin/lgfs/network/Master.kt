@@ -86,8 +86,11 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
 			.build()
 	}
 
+	/**
+	 * Sends regular heartbeat to chunk servers
+	 */
 	private fun onMasterUP(msg: ClusterProtocol.MasterUP): Behavior<ClusterProtocol> {
-		logger.debug("sending master up signal!")
+		logger.debug("sending master heartbeat!")
 		masterUpTopic.tell(Topic.publish(msg))
 		return Behaviors.same()
 	}
@@ -110,6 +113,10 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
 		return Behaviors.same()
 	}
 
+	/**
+	 * Handle chunk up signals from chunk servers.
+	 * @param msg : [ClusterProtocol.ChunkUp]
+	 */
 	private fun onChunkUp(msg: ClusterProtocol.ChunkUp): Behavior<ClusterProtocol> {
 		val serverAddress = msg.serverAddress
 		if (!chunkRefs.containsKey(serverAddress) || msg.instanceId != chunkInstancedIds[serverAddress]) {
@@ -126,9 +133,9 @@ class Master(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<Clus
 	}
 
 	private fun onChunkInventory(msg: ClusterProtocol.ChunkInventory): Behavior<ClusterProtocol> {
-		logger.info("received chunk inventory from {}: {} chunk received", msg.serverHostName, msg.chunkIds.size)
-		msg.chunkIds.forEach { chunkId ->
-			fs.attachServerToChunk(msg.serverHostName, chunkId)
+		logger.info("received chunk inventory from {}: {} chunk received", msg.serverHostName, msg.chunksInventory.chunks.size)
+		msg.chunksInventory.chunks.forEach() { chunk ->
+			fs.attachServerToChunk(msg.serverHostName, chunk)
 		}
 		return Behaviors.same()
 	}

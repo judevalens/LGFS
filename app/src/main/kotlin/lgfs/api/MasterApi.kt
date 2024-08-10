@@ -31,6 +31,4 @@ class MasterApi(private val gfsMasterService: ActorRef<FileProtocol>, private va
         }, Duration.ofMinutes(100000), system.scheduler())
         return res
     }
-
-
 }
