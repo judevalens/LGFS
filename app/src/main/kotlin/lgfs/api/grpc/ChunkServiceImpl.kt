@@ -43,7 +43,7 @@ class ChunkServiceImpl(private val chunkAPI: ChunkAPI) : ChunkServiceGrpcKt.Chun
                     it.clientId,
                     ChunkMetadata(
                         it.chunk.chunkHandle,
-                        it.chunk.chunkIndex
+                        it.chunk.chunkIndex.toLong()
                     ),
                     it.mutationId,
                     ServerAddress(it.primary.hostName, it.primary.akkaPort, it.primary.apiPort, it.primary.dataPort),

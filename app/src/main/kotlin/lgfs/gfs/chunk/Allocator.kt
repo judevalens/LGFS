@@ -7,23 +7,24 @@ import akka.actor.typed.javadsl.ActorContext
 import akka.actor.typed.javadsl.Behaviors
 import akka.actor.typed.javadsl.Receive
 import akka.pattern.StatusReply
+import com.fasterxml.jackson.annotation.JsonCreator
+import lgfs.network.JsonSerializable
 
 class Allocator(context: ActorContext<Command>) : AbstractBehavior<Allocator.Command>(context) {
-    interface Command {}
-    class ChunkEntry(val hunkHandle: Long, val chunkIndex: Long) {
+    interface Command
+    class ChunkEntry @JsonCreator constructor(val handle: Long, val chunkIndex: Long) {
         var currentPath: String? = null
         val oldPaths: MutableList<String> = ArrayList()
     }
 
-    data class ChunkInventoryList(val chunks: List<ChunkEntry>)
+    data class ChunkInventoryList @JsonCreator constructor(val chunks: List<ChunkEntry>) : JsonSerializable
 
     class UpdateCurrentPath(
         val chunkHandle: Long,
         val path: String,
         val create: Boolean,
         val replyTo: ActorRef<Command>
-    ) :
-        Command
+    ) : Command
 
     class UpdateCurrentPathRes(val isSuccessful: Boolean) : Command
     class GetCurrentPath(val chunkHandle: Long, val replyTo: ActorRef<Command>) : Command
@@ -32,7 +33,7 @@ class Allocator(context: ActorContext<Command>) : AbstractBehavior<Allocator.Com
     companion object {
         fun create(): Behavior<Command> {
             return Behaviors.setup {
-                Allocator(it);
+                Allocator(it)
             }
         }
     }
@@ -48,11 +49,11 @@ class Allocator(context: ActorContext<Command>) : AbstractBehavior<Allocator.Com
 
     private fun onGetCurrentPath(msg: GetCurrentPath): Behavior<Command> {
         if (!chunkEntries.containsKey(msg.chunkHandle)) {
-            msg.replyTo.tell(GetCurrentPathRes(null));
+            msg.replyTo.tell(GetCurrentPathRes(null))
             return Behaviors.same()
         }
         val chunkEntry = chunkEntries[msg.chunkHandle]!!
-        msg.replyTo.tell(GetCurrentPathRes(chunkEntry.currentPath));
+        msg.replyTo.tell(GetCurrentPathRes(chunkEntry.currentPath))
         return Behaviors.same()
     }
 

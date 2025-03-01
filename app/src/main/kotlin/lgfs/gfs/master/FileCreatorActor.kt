@@ -10,6 +10,8 @@ import lgfs.gfs.FileMetadata
 import lgfs.gfs.FileProtocol
 import lgfs.gfs.FileSystem
 import lgfs.gfs.allocator.AllocatorProtocol
+import lgfs.gfs.allocator.AllocatorActor
+
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
@@ -30,7 +32,6 @@ class FileCreatorActor(
 
     private class ChunkAllocationReq : Command
     private class ChunkAllocationRes(val isSuccessful: Boolean, val chunks: List<ChunkMetadata>?) : Command
-    private class Exit : Command
 
     private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 
@@ -51,14 +52,13 @@ class FileCreatorActor(
     }
 
     /**
-     * Ask the [Allocator] where to put this file's chunk
+     * Ask the [AllocatorActor] where to put this file's chunk
      */
     private fun createChunks(): Behavior<Command> {
         return Behaviors.receive(Command::class.java).onMessage(ChunkAllocationReq::class.java) { _ ->
             context.ask(AllocatorProtocol.ChunkAllocationRes::class.java, allocator, Duration.ofMinutes(1), {
                 logger.info(
-                    "Requesting replicas location for new file! file path: {}, req id: $reqId",
-                    fileMetadata.path
+                    "Requesting replicas location for new file! file path: {}, req id: $reqId", fileMetadata.path
                 )
                 AllocatorProtocol.ChunkAllocationReq(fileMetadata, it)
             }, { res, err ->
@@ -94,8 +94,7 @@ class FileCreatorActor(
     }
 
     private fun onCreateFile(): Behavior<Command> {
-        return Behaviors.receive(Command::class.java)
-            .onMessage(CreateFile::class.java) { msg ->
+        return Behaviors.receive(Command::class.java).onMessage(CreateFile::class.java) { msg ->
                 logger.info("{} - creating file : {} in FS", reqId, fileMetadata.path)
                 if (msg.chunks?.isEmpty() == true) {
                     logger.info("{} - failed to allocate chunks for file : {}", reqId, fileMetadata.path)

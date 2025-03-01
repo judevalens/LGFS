@@ -45,12 +45,10 @@ class ChunkService(private val chunkAllocatorActor: ActorRef<Allocator.Command>,
 		}
 		return true
 	}
-
 	private fun isPrimary(serverAddress: ServerAddress): Boolean {
 		return Secrets.getSecrets().getServerAddress() == serverAddress
 	}
-
-	fun commitMutations(commitMutationReqs: FileProtocol.CommitMutationReqs): Boolean {
+	fun commitMutations(commitMutationReqs: FileProtocol.CommitMutation): Boolean {
 		commitMutationReqs.commitReqs.forEach { commitMutationReq ->
 			if (mutationHolders.containsKey(commitMutationReq.chunkHandle)) {
 				mutationHolders[commitMutationReq.chunkHandle]!!.commitMutation(
@@ -60,11 +58,11 @@ class ChunkService(private val chunkAllocatorActor: ActorRef<Allocator.Command>,
 		}
 		return true
 	}
-
-	fun handlePayloadData(mutationId: String, payload: ByteArray) {
-		mutationData[mutationId] = ChunkData(0, "", payload)
+	fun handlePayloadData(chunkHandle: Long, mutationId: String, payload: ByteArray) {
+		val mutationHolder =
+			mutationHolders.getOrPut(chunkHandle) { MutationHolder(chunkHandle, chunkAllocatorActor, system) }
+		mutationHolder.addPayloadData(mutationId,payload)
 	}
-
 	fun handleLeaseGrant(newLeases: List<Lease>) {
 		newLeases.forEach {
 			val chunkHandle = it.chunkMetadata.handle

@@ -25,16 +25,16 @@ interface FileProtocol {
         val reqId: String, val chunkMetadataList: List<ChunkMetadata>, val replyTo: ActorRef<FileProtocol>
     ) : FileProtocol
 
-    class Mutation(
+    data class Mutation(
         val clientId: String,
         val chunkMetadata: ChunkMetadata,
         val mutationId: String,
         val primary: ServerAddress,
         val replicas: List<ServerAddress>,
         val serial: Int,
-        val offset: Int
+        val offset: Int,
+        val payload: ByteArray? = null
     ) : FileProtocol
-
     class CommitMutationReq(
         val reqId: String,
         val clientId: String,
@@ -42,7 +42,7 @@ interface FileProtocol {
         val replicas: List<ServerAddress>
     ) : FileProtocol
 
-    class CommitMutationReqs(val reqId: String, val commitReqs: List<Command.CommitMutationReq>) : FileProtocol
+    class CommitMutation(val reqId: String, val commitReqs: List<Command.CommitMutationReq>) : FileProtocol
     class AddMutationsReq(val reqId: String, val mutations: List<Mutation>, val replyTo: ActorRef<FileProtocol>) :
         FileProtocol
 

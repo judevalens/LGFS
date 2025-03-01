@@ -74,7 +74,6 @@ class MasterServiceActor(
 		if (leaseGranReqs.containsKey(msg.reqId)) {
 			val leaseGrantReq = leaseGranReqs[msg.reqId]!!
 			val leaseGrantRes = FileProtocol.LeaseGrantRes(msg.reqId, ArrayList())
-
 			// forwarding the leases to each primary chunk server
 			msg.leases.forEach { (hostName, leases) ->
 				leaseGrantRes.leases.addAll(leases)
@@ -82,7 +81,6 @@ class MasterServiceActor(
 						ClusterProtocol.ForwardToChunkService(hostName, FileProtocol.LeaseGrantRes(msg.reqId, leases))
 				)
 			}
-
 			//sending the leases back to the client
 			leaseGrantReq.replyTo.tell(leaseGrantRes)
 		}

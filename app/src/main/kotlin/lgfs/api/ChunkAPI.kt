@@ -27,7 +27,7 @@ class ChunkAPI(private val chunkService: ActorRef<FileProtocol>, private val sys
 		logger.info("reqId: {}, Sending commit mutation msg to chunkService actor", reqId)
 		val res: CompletionStage<Command> = AskPattern.ask(
 			chunkService, {
-				FileProtocol.CommitMutationReqs(reqId, commits)
+				FileProtocol.CommitMutation(reqId, commits)
 			},
 			Duration.ofSeconds(100000),
 			system.scheduler()

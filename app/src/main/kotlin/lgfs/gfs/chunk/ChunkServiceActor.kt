@@ -35,7 +35,7 @@ class ChunkServiceActor(context: ActorContext<FileProtocol>, chunkAllocatorActor
     override fun createReceive(): Receive<FileProtocol> {
         return newReceiveBuilder()
             .onMessage(FileProtocol.AddMutationsReq::class.java, this::onMutations)
-            .onMessage(FileProtocol.CommitMutationReqs::class.java, this::onCommitMutationReqs)
+            .onMessage(FileProtocol.CommitMutation::class.java, this::onCommitMutationReqs)
             .onMessage(FileProtocol.LeaseGrantRes::class.java, this::onLeaseGrant)
             .onMessage(PayloadData::class.java, this::onPayloadData)
             .build()
@@ -47,7 +47,7 @@ class ChunkServiceActor(context: ActorContext<FileProtocol>, chunkAllocatorActor
         return Behaviors.same()
     }
 
-    private fun onCommitMutationReqs(msg: FileProtocol.CommitMutationReqs): Behavior<FileProtocol> {
+    private fun onCommitMutationReqs(msg: FileProtocol.CommitMutation): Behavior<FileProtocol> {
         logger.info("req id: {}, Received commit mutation request from client", msg.reqId)
         chunkService.commitMutations(msg)
         return Behaviors.same()

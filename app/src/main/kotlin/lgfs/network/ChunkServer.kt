@@ -2,11 +2,7 @@ package lgfs.network
 
 import akka.actor.typed.ActorRef
 import akka.actor.typed.Behavior
-import akka.actor.typed.javadsl.AbstractBehavior
-import akka.actor.typed.javadsl.ActorContext
-import akka.actor.typed.javadsl.Behaviors
-import akka.actor.typed.javadsl.Receive
-import akka.actor.typed.javadsl.TimerScheduler
+import akka.actor.typed.javadsl.*
 import akka.actor.typed.pubsub.Topic
 import akka.actor.typed.receptionist.Receptionist
 import akka.actor.typed.receptionist.ServiceKey
@@ -20,12 +16,10 @@ import lgfs.gfs.chunk.ChunkServiceActor
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 import java.time.Duration
-import java.util.Optional
-import java.util.UUID
+import java.util.*
 
 class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler<ClusterProtocol>) :
     AbstractBehavior<ClusterProtocol>(context) {
-    class Ping : ClusterProtocol
     private class SendChunkUp : ClusterProtocol
 
     private val chunkUpTopic: ActorRef<Topic.Command<ClusterProtocol>> =
@@ -53,9 +47,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
         chunkUpTopic.tell(Topic.subscribe(context.self))
 
         // Periodically send itself to other chunk servers via a pub-sub actor
-        timers.startTimerWithFixedDelay(
-            CHUNK_UP_TIMER_KEY, SendChunkUp(), Duration.ZERO, Duration.ofSeconds(5)
-        )
+        timers.startTimerWithFixedDelay(CHUNK_UP_TIMER_KEY, SendChunkUp(), Duration.ZERO, Duration.ofSeconds(5))
 
         val chunkApi = ChunkAPI(chunkService, context.system)
         val chunkGrpcService = ChunkServiceImpl(chunkApi)
@@ -81,7 +73,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
     override fun createReceive(): Receive<ClusterProtocol> {
         return newReceiveBuilder().onMessage(SendChunkUp::class.java) { this.onSendChunkUp() }
             .onMessage(ClusterProtocol.MasterUP::class.java, this::handleMasterUp)
-            .onMessage(ClusterProtocol.RequestChunkInventory::class.java) { this.onRequestChunkInventory() }
+            .onMessage(ClusterProtocol.ChunkInventoryReq::class.java) { this.onRequestChunkInventory() }
             .onMessage(ClusterProtocol.ChunkUp::class.java, this::handleChunkUp)
             .onMessage(ClusterProtocol.ListingRes::class.java, this::onListing)
             .onMessage(ClusterProtocol.ChunkInventory::class.java, this::onChunkInventory)
@@ -127,10 +119,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
             isInitialized = true
             logger.info("Received actor ref for Master: {}", masterRef.path().address())
         } else {
-            chunkUpMessages.keys.stream().filter {
-                logger.debug("chunk service key id: {}", it.id())
-                it.id().equals(msg.listing.key.id())
-            }.limit(1).forEach {
+            chunkUpMessages.keys.find { it.id() == msg.listing.key.id() }?.let {
                 val actors = msg.listing.getServiceInstances(it)
                 if (actors.isNotEmpty()) {
                     val chunkUpMsg = chunkUpMessages[msg.listing.key]!!
@@ -151,13 +140,13 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
      */
     private fun onSendChunkUp(): Behavior<ClusterProtocol> {
         //logger.info("sending chunk up msg: ${context.self.path()}")
-        chunkUpTopic.tell(
-            Topic.publish(
+        if (isInitialized) {
+            masterRef.tell(
                 ClusterProtocol.ChunkUp(
                     Secrets.getSecrets().getServerAddress(), getState(), instanceID
                 )
             )
-        )
+        }
         return Behaviors.same()
     }
 
@@ -172,7 +161,7 @@ class ChunkServer(context: ActorContext<ClusterProtocol>, timers: TimerScheduler
             Duration.ofSeconds(1000),
             { Allocator.GetChunkInventory(it) },
             { chunkList, _ ->
-                ClusterProtocol.ChunkInventory(Secrets.getSecrets().getHostName(), chunkList)
+                ClusterProtocol.ChunkInventory(Secrets.getSecrets().getServerAddress(), chunkList)
             })
         return Behaviors.same()
     }

@@ -3,6 +3,7 @@ package lgfs.gfs.chunk
 import akka.actor.typed.ActorRef
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import lgfs.gfs.FileProtocol
 import lgfs.network.Secrets
@@ -21,11 +22,9 @@ class TCPConnectionHandler(
 		private val logger: Logger = LoggerFactory.getLogger(this::class.java)
 	}
 
-
 	@OptIn(DelicateCoroutinesApi::class)
 	fun startDataServer() {
 		val job = GlobalScope.launch {
-
 			val server = ServerSocket(Secrets.getSecrets().getServerAddress().dataPort)
 			while (true) {
 				logger.info("Waiting for connection to chunk data port")
@@ -35,6 +34,7 @@ class TCPConnectionHandler(
 				}
 			}
 		}
+
 	}
 
 	private fun listening(connection: Socket) {

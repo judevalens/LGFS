@@ -39,7 +39,7 @@ class MasterServiceImpl(private val masterGfs: MasterApi) : MasterServiceGrpcKt.
                 grpcChunks.add(
                     Gfs.Chunk.newBuilder()
                         .setChunkHandle(it.handle)
-                        .setChunkIndex(it.index)
+                        .setChunkIndex(it.index.toInt())
                         .build()
                 )
             }
@@ -87,7 +87,7 @@ class MasterServiceImpl(private val masterGfs: MasterApi) : MasterServiceGrpcKt.
             chunkList.add(
                 ChunkMetadata(
                     it.chunkHandle,
-                    it.chunkIndex
+                    it.chunkIndex.toLong()
                 )
             )
         }
@@ -114,7 +114,7 @@ class MasterServiceImpl(private val masterGfs: MasterApi) : MasterServiceGrpcKt.
 
                 val gfsChunk = Gfs.Chunk.newBuilder()
                     .setChunkHandle(lease.chunkMetadata.handle)
-                    .setChunkIndex(lease.chunkMetadata.index)
+                    .setChunkIndex(lease.chunkMetadata.index.toInt())
                     .build()
                 val grpcLease = Gfs.Lease.newBuilder()
                     .setChunk(gfsChunk)

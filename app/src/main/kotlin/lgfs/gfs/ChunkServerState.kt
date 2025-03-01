@@ -25,6 +25,5 @@ open class ChunkServerState @JsonCreator constructor(open val serverAddress: Ser
     }
 
     fun updateLastAccessed() {
-
     }
 }

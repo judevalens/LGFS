@@ -28,6 +28,7 @@ class AllocatorActor(context: ActorContext<AllocatorProtocol>, val master: Actor
             .onMessage(AllocatorProtocol.ChunkAllocationReq::class.java, this::onAllocateChunks)
             .onMessage(AllocatorProtocol.UpdateServerState::class.java, this::onUpdateState)
             .onMessage(AllocatorProtocol.LeaseGrantReq::class.java, this::onLeaseGrantReq)
+            .onMessage(AllocatorProtocol.UpdateChunkInventory::class.java, this::onUpdateChunkInventory)
             .build()
     }
 
@@ -48,17 +49,22 @@ class AllocatorActor(context: ActorContext<AllocatorProtocol>, val master: Actor
     private fun onLeaseGrantReq(msg: AllocatorProtocol.LeaseGrantReq): Behavior<AllocatorProtocol> {
         logger.info("{} - Processing lease grant request", msg.reqId)
         val leases = allocator.grantLease(msg.chunkMetadataList)
-        msg.replyTo.tell(FileProtocol.LeaseGrantMapRes(msg.reqId,leases))
+        msg.replyTo.tell(FileProtocol.LeaseGrantMapRes(msg.reqId, leases))
 
-/*        leases.forEach { entry ->
-            logger.debug("Forwarding lease grants to: ${entry.key}")
-            master.tell(
-                ClusterProtocol.ForwardToChunkService(
-                    entry.key,
-                    FileProtocol.LeaseGrantRes(msg.reqId, entry.value)
-                )
-            )
-        }*/
+        /*        leases.forEach { entry ->
+                    logger.debug("Forwarding lease grants to: ${entry.key}")
+                    master.tell(
+                        ClusterProtocol.ForwardToChunkService(
+                            entry.key,
+                            FileProtocol.LeaseGrantRes(msg.reqId, entry.value)
+                        )
+                    )
+                }*/
+        return Behaviors.same()
+    }
+
+    private fun onUpdateChunkInventory(msg: AllocatorProtocol.UpdateChunkInventory): Behavior<AllocatorProtocol> {
+        allocator.updateChunkInventory(msg.chunks, msg.chunkServerAddress)
         return Behaviors.same()
     }
 }

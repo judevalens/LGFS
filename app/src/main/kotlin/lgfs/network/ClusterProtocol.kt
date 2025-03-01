@@ -22,12 +22,12 @@ interface ClusterProtocol {
     class ListingRes(val listing: Receptionist.Listing) : ClusterProtocol
 
     class ChunkInventory @JsonCreator constructor(
-        val serverHostName: String,
+        val serverAddress: ServerAddress,
         val chunksInventory: Allocator.ChunkInventoryList
     ) : ClusterProtocol,
         JsonSerializable
 
-    class RequestChunkInventory @JsonCreator constructor() : ClusterProtocol,
+    class ChunkInventoryReq @JsonCreator constructor() : ClusterProtocol,
         JsonSerializable
 
     class NoOp() : ClusterProtocol,
